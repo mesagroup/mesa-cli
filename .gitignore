@@ -1,3 +1,4 @@
+node_modules/
 
 # pnpm store (if local)
 .pnpm-store/
