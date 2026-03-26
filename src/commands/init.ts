@@ -1,9 +1,10 @@
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import { input, confirm } from '@inquirer/prompts';
+import { input, confirm, select } from '@inquirer/prompts';
 import chalk from 'chalk';
 import { toKebabCase, toPascalCase, validatePluginName } from '../util/naming';
+import { generateFancyName } from '../util/name-generator';
 import { scaffold } from '../generators/scaffold';
 import type { ScaffoldConfig } from '../types/scaffold';
 
@@ -12,7 +13,7 @@ export interface InitFlags {
   author?: string;
   description?: string;
   dryRun?: boolean;
-  yes?: boolean; // Skip all prompts, use defaults
+  yes?: boolean;
 }
 
 function getGitUserName(): string {
@@ -32,24 +33,37 @@ function isGhAvailable(): boolean {
   }
 }
 
-/** Check if stdin is a TTY (interactive) */
 const isInteractive = () => process.stdin.isTTY === true;
 
 export async function initCommand(projectNameArg: string | undefined, flags: InitFlags): Promise<void> {
-  console.log(chalk.blue.bold('\n  MESA Plugin Scaffolder\n'));
+  console.log(chalk.blue.bold('\n  MESA Project Scaffolder\n'));
 
   const useDefaults = flags.yes || !isInteractive();
 
-  // 1. Plugin name
+  // 1. Project type selection
+  if (!useDefaults) {
+    await select({
+      message: 'Project type:',
+      choices: [
+        { value: 'plugin', name: 'MESA Plugin' },
+        { value: 'standalone', name: `Standalone App ${chalk.yellow('(coming soon)')}`, disabled: true },
+      ],
+    });
+  }
+
+  // 2. Plugin name (with fancy default)
+  const fancyDefault = generateFancyName();
   let pluginName: string;
+
   if (projectNameArg) {
     pluginName = toKebabCase(projectNameArg);
   } else if (useDefaults) {
-    console.error(chalk.red('Error: Plugin name is required in non-interactive mode.'));
-    process.exit(1);
+    pluginName = fancyDefault;
+    console.log(chalk.dim(`  Using generated name: ${chalk.bold(pluginName)}\n`));
   } else {
     const rawName = await input({
-      message: 'Plugin name (kebab-case):',
+      message: 'Plugin name:',
+      default: fancyDefault,
       validate(value) {
         const result = validatePluginName(toKebabCase(value));
         return result.valid || result.error!;
@@ -64,7 +78,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     process.exit(1);
   }
 
-  // 2. Description
+  // 3. Description
   let description: string;
   if (flags.description) {
     description = flags.description;
@@ -77,7 +91,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     });
   }
 
-  // 3. Include frontend?
+  // 4. Include frontend?
   let includeFrontend: boolean;
   if (flags.noFrontend !== undefined && flags.noFrontend) {
     includeFrontend = false;
@@ -90,7 +104,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     });
   }
 
-  // 4. Author
+  // 5. Author
   let author: string;
   if (flags.author) {
     author = flags.author;
@@ -103,7 +117,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     });
   }
 
-  // 5. Check output dir
+  // 6. Check output dir
   const outputDir = path.resolve(process.cwd(), pluginName);
   if (existsSync(outputDir)) {
     console.error(chalk.red(`\nError: Directory "${pluginName}" already exists.`));
@@ -121,17 +135,17 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     outputDir,
   };
 
-  // 6. Dry run?
+  // 7. Dry run?
   if (flags.dryRun) {
     console.log(chalk.yellow('\nDry run — no files will be created.\n'));
     console.log(chalk.dim('Config:'), JSON.stringify(config, null, 2));
     return;
   }
 
-  // 7. Scaffold
+  // 8. Scaffold
   await scaffold(config);
 
-  // 8. GitHub step (only in interactive mode)
+  // 9. GitHub step
   if (isInteractive() && isGhAvailable()) {
     const createRepo = await confirm({
       message: 'Create GitHub repository on MESA organization?',
@@ -139,7 +153,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     });
 
     if (createRepo) {
-      const defaultOrg = process.env.MESA_GITHUB_ORG ?? 'mesa';
+      const defaultOrg = process.env.MESA_GITHUB_ORG ?? 'mesagroup';
       const org = await input({
         message: 'GitHub organization:',
         default: defaultOrg,
@@ -162,7 +176,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     console.log(chalk.dim('\n  Tip: Install GitHub CLI (gh) to auto-create repos on MESA org.\n'));
   }
 
-  // 9. Next steps
+  // 10. Next steps
   console.log(chalk.blue.bold('  Next steps:\n'));
   console.log(chalk.dim('  Prerequisites:'));
   console.log('    - Docker Desktop (for SQL Server container)');
