@@ -108,3 +108,89 @@ export function getInstallCommand(tool: ToolInfo): string {
 export function getPlatformLabel(): string {
   return isWindows ? 'Windows' : 'macOS';
 }
+
+// --- Git identity checks ---
+
+export interface GitIdentity {
+  name: string;
+  email: string;
+}
+
+export function getGitIdentity(): GitIdentity {
+  let name = '';
+  let email = '';
+  try {
+    name = execSync('git config user.name', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  } catch { /* not configured */ }
+  try {
+    email = execSync('git config user.email', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+  } catch { /* not configured */ }
+  return { name, email };
+}
+
+// --- GitHub org access checks ---
+
+export interface GhOrgStatus {
+  authenticated: boolean;
+  ghUser: string;
+  hasOrgAccess: boolean;
+}
+
+export function checkGhOrgAccess(org: string): GhOrgStatus {
+  const result: GhOrgStatus = { authenticated: false, ghUser: '', hasOrgAccess: false };
+
+  // Check if gh is authenticated
+  try {
+    const status = execSync('gh auth status 2>&1', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 10_000,
+    });
+    if (status.includes('Logged in')) {
+      result.authenticated = true;
+    }
+  } catch (error: unknown) {
+    // gh auth status exits non-zero when not logged in, but may still output info
+    const output = error instanceof Error && 'stdout' in error ? String((error as { stdout: string }).stdout) : '';
+    if (output.includes('Logged in')) {
+      result.authenticated = true;
+    }
+  }
+
+  if (!result.authenticated) return result;
+
+  // Get gh username
+  try {
+    result.ghUser = execSync('gh api user -q .login', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 10_000,
+    }).trim();
+  } catch { /* ignore */ }
+
+  // Check org membership
+  try {
+    const orgs = execSync('gh api user/orgs -q ".[].login"', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 10_000,
+    });
+    result.hasOrgAccess = orgs.split('\n').some(o => o.trim().toLowerCase() === org.toLowerCase());
+  } catch { /* ignore */ }
+
+  return result;
+}
+
+export function requestGhOrgAccess(org: string): boolean {
+  try {
+    // gh api to request org membership (sends a membership request)
+    execSync(`gh api -X POST orgs/${org}/memberships/{username} 2>&1`, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 10_000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
