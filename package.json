@@ -27,6 +27,7 @@
     "zx": "^8.5.3"
   },
   "dependencies": {
+    "@inquirer/prompts": "^8.3.2",
     "chalk": "^5.4.1",
     "diff": "^7.0.0",
     "dotenv": "^16.5.0",

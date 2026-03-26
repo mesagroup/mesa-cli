@@ -1,10 +1,6 @@
-#!/usr/bin/env node
-
 import meow from 'meow';
-import { Client } from './client';
-import { Config } from './types';
 import dotenv from 'dotenv';
-import { z } from 'zod';
+import { initCommand } from './commands/init';
 
 dotenv.config();
 
@@ -14,51 +10,65 @@ const cli = meow(
     $ mesa <command> [options]
 
   Commands
-    init    Initialize a new project
-    deploy  Deploy your project
-    status  Check deployment status
+    init     Scaffold a new MESAPPA plugin project
+    login    Login to your account and obtain an auth token
 
-  Options
-    --api-key     API key for authentication
-    --base-url    Custom API base URL
+  Init Options
+    --no-frontend  Skip Angular frontend generation
+    --author       Author name (default: git config user.name)
+    --dry-run      Show what would be created without writing files
+
+  Login Options
+    --tenant-id    The tenant ID to use for the login
 
   Examples
-    $ mesa init
-    $ mesa deploy --api-key=xxx
+    $ mesa init my-plugin
+    $ mesa init my-plugin --no-frontend
+    $ mesa login --tenant-id=mesappa
 `,
   {
     importMeta: import.meta,
+    flags: {
+      tenantId: { type: 'string' },
+      frontend: { type: 'boolean', default: true },
+      author: { type: 'string' },
+      description: { type: 'string' },
+      dryRun: { type: 'boolean', default: false },
+      yes: { type: 'boolean', shortFlag: 'y', default: false },
+    },
   }
 );
 
-const configSchema = z.object({
-  apiKey: z.string().optional(),
-  baseUrl: z.string().url().optional(),
-});
-
 async function main() {
-  const config = configSchema.parse({
-    apiKey: process.env.MESA_API_KEY || cli.flags.apiKey,
-    baseUrl: process.env.MESA_BASE_URL || cli.flags.baseUrl,
-  });
-
-  const client = new Client({
-    apiKey: config.apiKey || '',
-    baseUrl: config.baseUrl,
-  });
-
-  const [command] = cli.input;
+  const [command, ...args] = cli.input;
 
   switch (command) {
-    case 'init':
-      console.log('Initializing project...');
+    case 'init': {
+      await initCommand(args[0], {
+        noFrontend: !cli.flags.frontend,
+        author: cli.flags.author,
+        description: cli.flags.description,
+        dryRun: cli.flags.dryRun,
+        yes: cli.flags.yes,
+      });
       break;
-    case 'deploy':
-      console.log('Deploying project...');
+    }
+
+    case 'login': {
+      // Lazy-load client only for commands that need it
+      const { ClientSDK } = await import('./client/client');
+      const tenantId = cli.flags.tenantId ?? process.env.MESA_INSTANCE ?? 'default';
+      const client = new ClientSDK({
+        client: {
+          tenantId,
+          baseUrl: process.env.MESA_BASE_URL,
+        },
+      });
+      const response = await client.login();
+      console.log('Login successful:', response);
       break;
-    case 'status':
-      console.log('Checking status...');
-      break;
+    }
+
     default:
       cli.showHelp();
   }

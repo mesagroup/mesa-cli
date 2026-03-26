@@ -1,0 +1,4 @@
+- Stack: TypeScript, Node.js CLI (meow), tsup bundler, chalk, zx
+- Package manager: pnpm 10.9.0 (declared in packageManager)
+- Tests: vitest
+- Linting: xo + prettier

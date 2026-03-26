@@ -1,0 +1,86 @@
+import type {ScaffoldConfig} from '../../types/scaffold';
+
+export function render(config: ScaffoldConfig): string {
+	const lines = [
+		`# ${config.pluginName}`,
+		``,
+		`${config.description}`,
+		``,
+		`## Prerequisites`,
+		``,
+		`- [Node.js](https://nodejs.org/) 18+`,
+		`- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for SQL Server container)`,
+		`- [.NET SDK 10+](https://dotnet.microsoft.com/download) (for Aspire CLI)`,
+		`- Aspire CLI: \`dotnet tool install -g aspirate\``,
+		``,
+		`## Installation`,
+		``,
+		`\`\`\`bash`,
+		`npm run install:all`,
+		`\`\`\``,
+		``,
+		`## Development`,
+		``,
+		`### With Aspire (recommended)`,
+		``,
+		`Aspire orchestrates SQL Server, the backend, and the frontend in one command:`,
+		``,
+		`\`\`\`bash`,
+		`npm run dev`,
+		`\`\`\``,
+		``,
+		`This runs \`aspire run\`, which reads \`apphost.ts\` and starts all services.`,
+		``,
+		`### Without Aspire (manual)`,
+		``,
+		`1. Copy \`.env.example\` to \`.env\` and fill in your database credentials.`,
+		`2. Start a SQL Server instance (Docker or local).`,
+		`3. Start the backend:`,
+		``,
+		`\`\`\`bash`,
+		`cd backend`,
+		`npm run dev`,
+		`\`\`\``,
+		``,
+	];
+
+	if (config.includeFrontend) {
+		lines.push(
+			`4. Start the frontend:`,
+			``,
+			`\`\`\`bash`,
+			`cd frontend`,
+			`npm start`,
+			`\`\`\``,
+			``,
+		);
+	}
+
+	lines.push(
+		`## Build`,
+		``,
+		`\`\`\`bash`,
+		`npm run build`,
+		`\`\`\``,
+		``,
+		`This compiles the backend with \`tsc\`${config.includeFrontend ? ' and builds the frontend with `ng build --configuration production`' : ''}.`,
+		``,
+		`## Deployment`,
+		``,
+		`Refer to the MESAPPA deployment rules:`,
+		``,
+		`- Use \`npm ci\` (not \`npm install\`) for reproducible builds (V7).`,
+		`- All environment variables must be injected by the deployment platform.`,
+		`- No hardcoded paths; use relative paths or env vars (V8).`,
+		`- Ensure CORS origins are whitelisted for the production domain (V4).`,
+		`- Configure TLS termination at the reverse proxy.`,
+		`- See \`scripts/deploy.ps1\` for a deployment script template.`,
+		``,
+		`## Environment Variables`,
+		``,
+		`See [docs/env-vars.md](./env-vars.md) for full documentation.`,
+		``,
+	);
+
+	return lines.join('\n');
+}

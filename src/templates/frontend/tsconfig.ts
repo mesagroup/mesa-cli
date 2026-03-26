@@ -1,0 +1,35 @@
+import type {ScaffoldConfig} from '../../types/scaffold';
+
+export function render(_config: ScaffoldConfig): string {
+	const tsconfig = {
+		compileOnSave: false,
+		compilerOptions: {
+			baseUrl: './',
+			outDir: './dist/out-tsc',
+			forceConsistentCasingInFileNames: true,
+			strict: true,
+			noImplicitOverride: true,
+			noPropertyAccessFromIndexSignature: true,
+			noImplicitReturns: true,
+			noFallthroughCasesInSwitch: true,
+			sourceMap: true,
+			declaration: false,
+			downlevelIteration: true,
+			experimentalDecorators: true,
+			moduleResolution: 'node',
+			importHelpers: true,
+			target: 'ES2022',
+			module: 'ES2022',
+			useDefineForClassFields: false,
+			lib: ['ES2022', 'dom'],
+		},
+		angularCompilerOptions: {
+			enableI18nLegacyMessageIdFormat: false,
+			strictInjectionParameters: true,
+			strictInputAccessModifiers: true,
+			strictTemplates: true,
+		},
+	};
+
+	return JSON.stringify(tsconfig, null, 2);
+}

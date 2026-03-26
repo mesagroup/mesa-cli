@@ -1,0 +1,152 @@
+import { describe, it, expect, afterEach } from 'vitest';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { execSync } from 'node:child_process';
+import { scaffold } from '../scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
+
+function makeTmpDir(): string {
+  const dir = join(tmpdir(), `mesa-test-${Date.now()}`);
+  return dir;
+}
+
+function makeConfig(overrides: Partial<ScaffoldConfig> = {}): ScaffoldConfig {
+  const outputDir = makeTmpDir();
+  return {
+    pluginName: 'test-plugin',
+    pluginClassName: 'TestPlugin',
+    description: 'Test description',
+    author: 'Test Author',
+    includeFrontend: false,
+    outputDir,
+    ...overrides,
+  };
+}
+
+const dirs: string[] = [];
+
+afterEach(() => {
+  for (const dir of dirs) {
+    try {
+      rmSync(dir, { recursive: true, force: true });
+    } catch {
+      // ignore
+    }
+  }
+
+  dirs.length = 0;
+});
+
+describe('scaffold', () => {
+  it('creates backend-only project', async () => {
+    const config = makeConfig({ includeFrontend: false });
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    // Core files exist
+    expect(existsSync(join(config.outputDir, 'package.json'))).toBe(true);
+    expect(existsSync(join(config.outputDir, '.gitignore'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(config.outputDir, '.claude/CLAUDE.md'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'apphost.ts'))).toBe(true);
+
+    // Backend files
+    expect(existsSync(join(config.outputDir, 'backend/src/server.ts'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'backend/src/middleware/authJwt.ts'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'backend/src/services/db.ts'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'backend/src/routes/health.ts'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'backend/src/config/env.ts'))).toBe(true);
+
+    // No frontend
+    expect(existsSync(join(config.outputDir, 'frontend'))).toBe(false);
+  });
+
+  it('creates project with frontend', async () => {
+    const config = makeConfig({ includeFrontend: true });
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    // Frontend files
+    expect(existsSync(join(config.outputDir, 'frontend/package.json'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'frontend/angular.json'))).toBe(true);
+    expect(existsSync(join(config.outputDir, 'frontend/webpack.config.js'))).toBe(true);
+    expect(existsSync(join(config.outputDir, `frontend/projects/test-plugin/src/public-api.ts`))).toBe(true);
+    expect(existsSync(join(config.outputDir, `frontend/projects/test-plugin/src/lib/test-plugin.module.ts`))).toBe(true);
+  });
+
+  it('initializes git repo', async () => {
+    const config = makeConfig();
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    expect(existsSync(join(config.outputDir, '.git'))).toBe(true);
+    const log = execSync('git log --oneline', { cwd: config.outputDir, encoding: 'utf8' });
+    expect(log).toContain('Initial scaffold via mesa-cli');
+  });
+
+  it('.gitignore contains required entries', async () => {
+    const config = makeConfig();
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    const gitignore = readFileSync(join(config.outputDir, '.gitignore'), 'utf8');
+    expect(gitignore).toContain('.env');
+    expect(gitignore).toContain('node_modules');
+    expect(gitignore).toContain('dist');
+    expect(gitignore).toContain('.modules');
+  });
+
+  it('no secrets in generated files', async () => {
+    const config = makeConfig({ includeFrontend: true });
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    // Check that no real secrets are in tracked files (env.example has placeholders)
+    const serverTs = readFileSync(join(config.outputDir, 'backend/src/server.ts'), 'utf8');
+    expect(serverTs).not.toContain('YourStr0ngP@ssword');
+
+    const envConfig = readFileSync(join(config.outputDir, 'backend/src/config/env.ts'), 'utf8');
+    expect(envConfig).not.toContain('YourStr0ngP@ssword');
+  });
+
+  it('CLAUDE.md contains MESAPPA rules', async () => {
+    const config = makeConfig();
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    const claudeMd = readFileSync(join(config.outputDir, '.claude/CLAUDE.md'), 'utf8');
+    expect(claudeMd).toContain('parameterized');
+    expect(claudeMd).toContain('SQL');
+    expect(claudeMd).toContain('JWT');
+    expect(claudeMd).toContain('CORS');
+  });
+
+  it('apphost.ts omits frontend when not included', async () => {
+    const config = makeConfig({ includeFrontend: false });
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    const apphost = readFileSync(join(config.outputDir, 'apphost.ts'), 'utf8');
+    expect(apphost).toContain('addNodeApp');
+    expect(apphost).not.toContain('addNpmApp');
+  });
+
+  it('apphost.ts includes frontend when included', async () => {
+    const config = makeConfig({ includeFrontend: true });
+    dirs.push(config.outputDir);
+
+    await scaffold(config);
+
+    const apphost = readFileSync(join(config.outputDir, 'apphost.ts'), 'utf8');
+    expect(apphost).toContain('addNodeApp');
+    expect(apphost).toContain('addNpmApp');
+  });
+});
