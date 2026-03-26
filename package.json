@@ -2,11 +2,11 @@
   "name": "mesa-cli",
   "version": "1.0.0",
   "description": "CLI tool for scaffolding MESAPPA on-prem plugin projects",
-  "main": "dist/index.mjs",
-  "types": "dist/index.d.mts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "mesa": "dist/cli.mjs"
+    "mesa": "dist/cli.js"
   },
   "files": [
     "dist"
