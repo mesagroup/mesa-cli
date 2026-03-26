@@ -1,8 +1,16 @@
 {
   "name": "mesa-cli",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "CLI tool for scaffolding MESAPPA on-prem plugin projects",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.mts",
+  "type": "module",
+  "bin": {
+    "mesa": "dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
