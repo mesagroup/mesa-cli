@@ -1,4 +1,8 @@
+export type ProjectType = 'onprem' | 'saas';
+
 export interface ScaffoldConfig {
+  /** Project type: on-premise (Express+Aspire) or SaaS (Azure Functions) */
+  projectType: ProjectType;
   /** kebab-case plugin name, e.g. "asset-tracker" */
   pluginName: string;
   /** PascalCase class name, derived from pluginName, e.g. "AssetTracker" */

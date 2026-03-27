@@ -4,6 +4,7 @@ import type {ScaffoldConfig} from '../../types/scaffold';
  * Generates the root CLAUDE.md with project overview and commands.
  */
 export function renderRoot(config: ScaffoldConfig): string {
+	const isSaas = config.projectType === 'saas';
 	const lines = [
 		`# ${config.pluginName}`,
 		``,
@@ -11,15 +12,30 @@ export function renderRoot(config: ScaffoldConfig): string {
 		``,
 		`## Stack`,
 		``,
-		`- **Backend**: Express 4 + TypeScript + SQL Server (mssql)`,
-		`- **Frontend**: ${config.includeFrontend ? 'Angular 16 + Module Federation' : 'Not included'}`,
-		`- **Orchestration**: .NET Aspire (Node.js hosting)`,
+	];
+
+	if (isSaas) {
+		lines.push(
+			`- **Backend**: Azure Functions v4 + TypeScript + SQL Server (mssql)`,
+			`- **Frontend**: ${config.includeFrontend ? 'Angular 16 + Module Federation' : 'Not included'}`,
+			`- **CI/CD**: GitHub Actions`,
+			`- **Infra**: Azure App Settings / Key Vault`,
+		);
+	} else {
+		lines.push(
+			`- **Backend**: Express 4 + TypeScript + SQL Server (mssql)`,
+			`- **Frontend**: ${config.includeFrontend ? 'Angular 16 + Module Federation' : 'Not included'}`,
+			`- **Orchestration**: .NET Aspire (Node.js hosting)`,
+		);
+	}
+
+	lines.push(
 		``,
 		`## Build / Test / Lint Commands`,
 		``,
 		`### Root`,
 		`- Install all: \`npm run install:all\``,
-		`- Dev (Aspire): \`npm run dev\``,
+		`- Dev: \`npm run dev\``,
 		`- Build: \`npm run build\``,
 		`- Start: \`npm run start\``,
 		``,
@@ -28,7 +44,7 @@ export function renderRoot(config: ScaffoldConfig): string {
 		`- Build: \`npm run build\` (tsc)`,
 		`- Start: \`npm start\``,
 		``,
-	];
+	);
 
 	if (config.includeFrontend) {
 		lines.push(
@@ -40,20 +56,28 @@ export function renderRoot(config: ScaffoldConfig): string {
 		);
 	}
 
-	lines.push(
-		`## Rules`,
-		``,
-		`See \`.claude/CLAUDE.md\` for the full MESAPPA on-prem development rules.`,
-		``,
-	);
+	const rulesRef = isSaas
+		? `See \`.claude/CLAUDE.md\` for the full MESAPPA SaaS plugin development rules.`
+		: `See \`.claude/CLAUDE.md\` for the full MESAPPA on-prem development rules.`;
+
+	lines.push(`## Rules`, ``, rulesRef, ``);
 
 	return lines.join('\n');
 }
 
 /**
- * Generates .claude/CLAUDE.md with full MESAPPA on-prem development rules.
+ * Generates .claude/CLAUDE.md with full MESAPPA development rules.
+ * Dispatches to on-prem or SaaS rules based on projectType.
  */
 export function renderProject(config: ScaffoldConfig): string {
+	if (config.projectType === 'saas') {
+		return renderSaasProject(config);
+	}
+
+	return renderOnPremProject(config);
+}
+
+function renderOnPremProject(config: ScaffoldConfig): string {
 	return [
 		`# MESAPPA On-Prem Plugin Development Rules`,
 		``,
@@ -170,6 +194,152 @@ export function renderProject(config: ScaffoldConfig): string {
 		`- **No cloud SDK imports** - On-prem only`,
 		`- **No unvalidated request bodies** - Zod-validate everything`,
 		`- **No disabled Helmet headers** - Keep defaults enabled`,
+		``,
+	].join('\n');
+}
+
+function renderSaasProject(config: ScaffoldConfig): string {
+	return [
+		`# MESAPPA SaaS Plugin Development Rules`,
+		``,
+		`Project: **${config.pluginName}**`,
+		``,
+		`## Stack`,
+		``,
+		`- Azure Functions v4 TypeScript (backend API)`,
+		`- Angular 16 (frontend, if included)`,
+		`- SQL Server (database, via mssql driver)`,
+		`- GitHub Actions CI/CD`,
+		``,
+		`## Repository Structure`,
+		``,
+		`\`\`\``,
+		`${config.pluginName}/`,
+		`  backend/              # Azure Functions`,
+		`    src/`,
+		`      functions/        # HTTP triggers (thin handlers)`,
+		`      services/         # Business logic`,
+		`      middleware/        # Auth, validation`,
+		`      config/           # Environment & DB config`,
+		`    host.json           # Azure Functions host config`,
+		`    local.settings.json # Local dev settings (gitignored)`,
+		`  frontend/             # Angular 16 app (optional)`,
+		`    projects/<name>/    # Plugin library`,
+		`      src/public-api.ts # Minimal public surface`,
+		`  scripts/              # PowerShell & Bash helpers`,
+		`  docs/                 # Documentation`,
+		`  .github/workflows/   # CI/CD pipeline`,
+		`\`\`\``,
+		``,
+		`## Constraints`,
+		``,
+		`### V1 - Azure Functions v4 TypeScript`,
+		`Use Azure Functions v4 programming model. Each function is a thin HTTP trigger.`,
+		`Register with \`app.http()\`. Business logic lives in services, not in function handlers.`,
+		``,
+		`### V2 - SQL Server with Parameterized Queries`,
+		`Use SQL Server as the sole database. All queries MUST use parameterized inputs`,
+		`via \`pool.request().input()\`. Never concatenate user input into SQL strings.`,
+		``,
+		`### V3 - Functions Are Thin Handlers`,
+		`Function handlers parse input, call a service, return the response. Business logic`,
+		`lives in \`services/\`. One responsibility per function file.`,
+		``,
+		`### V4 - CORS Explicit Origins`,
+		`Configure CORS with an explicit list of allowed origins. Never use \`*\` with`,
+		`credentials. Read origins from environment variables.`,
+		``,
+		`### V5 - Authentication`,
+		`Use Function-level auth keys for API protection. For user-level auth, use JWT`,
+		`verification with \`jose\`. Validate issuer, audience, and expiration.`,
+		`Never disable auth silently when config is missing - fail closed in production.`,
+		``,
+		`### V6 - Secrets Management`,
+		`Never commit secrets. Use \`local.settings.json\` locally (gitignored).`,
+		`In production, use Azure App Settings or Key Vault references.`,
+		`Maintain \`local.settings.json.example\` with placeholder values.`,
+		`Errors must never expose stack traces or internal messages to the client.`,
+		``,
+		`### V7 - Reproducible Builds`,
+		`Use \`npm ci\` (not \`npm install\`) in CI/CD and deploy scripts.`,
+		`Angular builds use \`--configuration production\`. Backend builds use \`tsc\`.`,
+		`The pipeline MUST fail if tests fail.`,
+		``,
+		`### V8 - No Hardcoded Paths`,
+		`All paths must be relative or derived from environment variables.`,
+		`Scripts use \`$PSScriptRoot\` (PowerShell) or \`$(dirname "$0")\` (Bash).`,
+		`No Azure subscription IDs or resource names hardcoded as fallbacks.`,
+		``,
+		`### V9 - Environment Separation`,
+		`Maintain separate configurations for Dev, Test, and Production.`,
+		`Same variable names across \`.env.example\`, deploy scripts, and Azure App Settings.`,
+		`One single source of truth for what config a deployment needs.`,
+		``,
+		`### V10 - Zod Validation`,
+		`Validate all external inputs (request bodies, query params, headers) with Zod.`,
+		`Define schemas next to the functions or services that use them.`,
+		`Reject invalid input with clear error messages (no stack traces).`,
+		``,
+		`### V11 - Centralized Error Handling`,
+		`Return generic error messages to clients. Log full details internally`,
+		`(Application Insights or console). Never return \`ex.message\` or stack traces.`,
+		`Format: \`{ error: string, details?: unknown }\`.`,
+		``,
+		`## Security Rules`,
+		``,
+		`- All SQL queries MUST use parameterized inputs`,
+		`- Never concatenate user input into SQL strings`,
+		`- JWT tokens must be verified on every protected request`,
+		`- Function keys are first-level secrets - treat like passwords`,
+		`- Secrets are never logged or returned in API responses`,
+		`- \`.gitignore\` must cover ALL \`node_modules/\` directories (not just frontend)`,
+		`- No \`local-token.ts\` with real JWT - use env vars or \`local.settings.json\``,
+		`- Limit file upload sizes and allowed MIME types`,
+		`- Do not log tokens, passwords, or PII`,
+		``,
+		`## Frontend Rules`,
+		``,
+		`- Keep \`public-api\` surface minimal: module, root component, Configuration, InputData`,
+		`- No mocks or test data in \`public-api.ts\` - keep those in \`src/app/\` only`,
+		`- Use Module Federation with \`singleton\` and \`strictVersion\` for shared Angular deps`,
+		`- Align Angular major.minor version with the MESAPPA host application`,
+		`- One component, one responsibility - split at ~250-400 lines`,
+		`- Split domain services: \`ApiService\`, \`ExcelService\`, \`ThemeService\` etc.`,
+		`- Enable TypeScript strict mode for new projects`,
+		`- Proxy API requests in dev via \`proxy.conf.js\``,
+		``,
+		`## Backend Rules`,
+		``,
+		`- Functions are thin handlers; services contain business logic (V3)`,
+		`- Use Dependency Injection pattern - no \`new Service()\` scattered in handlers`,
+		`- CORS explicit origins only; no wildcard with credentials (V4)`,
+		`- All queries parameterized via \`mssql\` \`pool.request().input()\` (V2)`,
+		`- Validate inputs with Zod (V10)`,
+		`- Centralized error handling (V11)`,
+		`- Remove example/demo functions before production deploy`,
+		``,
+		`## CI/CD Rules`,
+		``,
+		`- Pipeline: build + test + lint on every PR`,
+		`- Deploy only from protected branch (main) or via tag`,
+		`- No secrets in plain text in workflow YAML - use GitHub Secrets`,
+		`- Post-deploy smoke test (at minimum: health endpoint returns 200)`,
+		`- Angular production build uses \`--configuration production\``,
+		``,
+		`## Anti-Patterns to Block`,
+		``,
+		`- **No \`any\` types** - Use \`unknown\` and narrow, or define proper types`,
+		`- **No string-concatenated SQL** - Always parameterize`,
+		`- **No \`cors({ origin: '*' })\` with credentials** - Whitelist origins`,
+		`- **No business logic in function handlers** - Extract to services`,
+		`- **No \`npm install\` in CI** - Use \`npm ci\``,
+		`- **No hardcoded paths or Azure resource IDs** - Use env vars`,
+		`- **No committed secrets** - Use local.settings.json + .gitignore`,
+		`- **No unvalidated request bodies** - Zod-validate everything`,
+		`- **No \`ex.message\` returned to client** - Generic error + internal log`,
+		`- **No "God component" (>400 lines)** - Split into sub-components + services`,
+		`- **No mock data in public-api** - Keep mocks in dev shell only`,
+		`- **No silent auth bypass** - If config missing, fail closed in prod`,
 		``,
 	].join('\n');
 }

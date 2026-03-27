@@ -1,0 +1,38 @@
+import type { ScaffoldConfig } from '../../types/scaffold';
+
+export function render(_config: ScaffoldConfig): string {
+	return [
+		"import sql from 'mssql';",
+		"import { env } from '../config/env';",
+		'',
+		'let pool: sql.ConnectionPool | null = null;',
+		'',
+		'/**',
+		' * Returns a lazily-initialized singleton connection pool.',
+		' * All queries MUST use parameterized statements via pool.request().input().',
+		' */',
+		'export async function getPool(): Promise<sql.ConnectionPool> {',
+		'  if (!pool) {',
+		'    const config: sql.config = {',
+		'      server: env.DB_SERVER,',
+		'      database: env.DB_NAME,',
+		'      user: env.DB_USER,',
+		'      password: env.DB_PASSWORD,',
+		'      options: {',
+		'        encrypt: true,',
+		'        trustServerCertificate: false,',
+		'      },',
+		'    };',
+		'',
+		'    pool = await new sql.ConnectionPool(config).connect();',
+		"    pool.on('error', (err) => {",
+		"      console.error('[DB] Pool error:', err.message);",
+		'      pool = null;',
+		'    });',
+		'  }',
+		'',
+		'  return pool;',
+		'}',
+		'',
+	].join('\n');
+}

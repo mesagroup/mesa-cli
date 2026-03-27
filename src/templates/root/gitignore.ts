@@ -1,7 +1,7 @@
 import type {ScaffoldConfig} from '../../types/scaffold';
 
-export function render(_config: ScaffoldConfig): string {
-	return [
+export function render(config: ScaffoldConfig): string {
+	const lines = [
 		'# Environment',
 		'.env',
 		'.env.local',
@@ -14,15 +14,15 @@ export function render(_config: ScaffoldConfig): string {
 		'dist/',
 		'build/',
 		'',
-		'# Aspire',
-		'.modules/',
-		'',
-		'# Logs',
-		'*.log',
-		'',
-		'# OS files',
-		'.DS_Store',
-		'Thumbs.db',
-		'',
-	].join('\n');
+	];
+
+	if (config.projectType === 'saas') {
+		lines.push('# Azure Functions', 'local.settings.json', '');
+	} else {
+		lines.push('# Aspire', '.modules/', '');
+	}
+
+	lines.push('# Logs', '*.log', '', '# OS files', '.DS_Store', 'Thumbs.db', '');
+
+	return lines.join('\n');
 }

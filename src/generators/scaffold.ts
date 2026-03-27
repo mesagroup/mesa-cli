@@ -4,7 +4,7 @@ import { execSync } from 'node:child_process';
 import chalk from 'chalk';
 import type { ScaffoldConfig } from '../types/scaffold';
 
-// Backend templates
+// Backend templates (on-prem)
 import { render as renderBackendPackageJson } from '../templates/backend/package-json';
 import { render as renderBackendTsconfig } from '../templates/backend/tsconfig';
 import { render as renderServer } from '../templates/backend/server';
@@ -16,11 +16,22 @@ import { render as renderEnvConfig } from '../templates/backend/env-config';
 import { render as renderBackendEnvExample } from '../templates/backend/env-example';
 import { render as renderNodemon } from '../templates/backend/nodemon';
 
-// Aspire templates
+// Backend templates (SaaS — Azure Functions)
+import { render as renderSaasPackageJson } from '../templates/backend-saas/package-json';
+import { render as renderSaasTsconfig } from '../templates/backend-saas/tsconfig';
+import { render as renderHostJson } from '../templates/backend-saas/host-json';
+import { render as renderLocalSettingsExample } from '../templates/backend-saas/local-settings-example';
+import { render as renderSaasHealthFunction } from '../templates/backend-saas/health-function';
+import { render as renderSaasEnvConfig } from '../templates/backend-saas/env-config';
+import { render as renderSaasDbService } from '../templates/backend-saas/db-service';
+import { render as renderSaasAuthMiddleware } from '../templates/backend-saas/auth-middleware';
+import { render as renderSaasSampleFunction } from '../templates/backend-saas/sample-function';
+
+// Aspire templates (on-prem only)
 import { render as renderAppHost } from '../templates/aspire/apphost';
 import { render as renderAspireConfig } from '../templates/aspire/aspire-config';
 
-// Root templates
+// Root templates (shared, with conditional logic inside)
 import { render as renderRootPackageJson } from '../templates/root/package-json';
 import { render as renderGitignore } from '../templates/root/gitignore';
 import { render as renderRootEnvExample } from '../templates/root/env-example';
@@ -28,12 +39,20 @@ import { renderRoot as renderRootClaudeMd, renderProject as renderProjectClaudeM
 import { render as renderReadme } from '../templates/root/readme';
 import { render as renderEnvVarsDoc } from '../templates/root/env-vars-doc';
 
-// Script templates
+// Script templates (on-prem)
 import { render as renderStartLocalPs1 } from '../templates/scripts/start-local-ps1';
 import { render as renderStartLocalSh } from '../templates/scripts/start-local-sh';
 import { render as renderDeployPs1 } from '../templates/scripts/deploy-ps1';
 
-// Frontend templates (conditionally imported)
+// Script templates (SaaS)
+import { render as renderSaasStartLocalPs1 } from '../templates/scripts-saas/start-local-ps1';
+import { render as renderSaasStartLocalSh } from '../templates/scripts-saas/start-local-sh';
+import { render as renderSaasDeployPs1 } from '../templates/scripts-saas/deploy-ps1';
+
+// CI template (SaaS only)
+import { render as renderGitHubActions } from '../templates/ci/github-actions';
+
+// Frontend templates (shared between on-prem and SaaS)
 import { render as renderFrontendPackageJson } from '../templates/frontend/package-json';
 import { render as renderAngularJson } from '../templates/frontend/angular-json';
 import { render as renderFrontendTsconfig } from '../templates/frontend/tsconfig';
@@ -52,24 +71,55 @@ interface FileEntry {
   content: string;
 }
 
-function buildFileManifest(config: ScaffoldConfig): FileEntry[] {
-  const { pluginName, includeFrontend } = config;
-  const files: FileEntry[] = [];
+function addFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
+  const { pluginName } = config;
+  files.push({ relativePath: 'frontend/package.json', content: renderFrontendPackageJson(config) });
+  files.push({ relativePath: 'frontend/angular.json', content: renderAngularJson(config) });
+  files.push({ relativePath: 'frontend/tsconfig.json', content: renderFrontendTsconfig(config) });
+  files.push({ relativePath: 'frontend/webpack.config.js', content: renderWebpackConfig(config) });
+  files.push({ relativePath: 'frontend/proxy.conf.js', content: renderProxyConf(config) });
+  files.push({
+    relativePath: `frontend/projects/${pluginName}/src/lib/${pluginName}.module.ts`,
+    content: renderPluginModule(config),
+  });
+  files.push({
+    relativePath: `frontend/projects/${pluginName}/src/lib/${pluginName}.component.ts`,
+    content: renderPluginComponent(config),
+  });
+  files.push({
+    relativePath: `frontend/projects/${pluginName}/src/lib/${pluginName}.service.ts`,
+    content: renderPluginService(config),
+  });
+  files.push({
+    relativePath: `frontend/projects/${pluginName}/src/lib/models.ts`,
+    content: renderModels(config),
+  });
+  files.push({
+    relativePath: `frontend/projects/${pluginName}/src/public-api.ts`,
+    content: renderPublicApi(config),
+  });
+  files.push({ relativePath: 'frontend/src/app/app.module.ts', content: renderDevAppModule(config) });
+  files.push({ relativePath: 'frontend/src/app/app.component.ts', content: renderDevAppComponent(config) });
+}
 
-  // Root files
+function addRootFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: 'package.json', content: renderRootPackageJson(config) });
   files.push({ relativePath: '.gitignore', content: renderGitignore(config) });
   files.push({ relativePath: '.env.example', content: renderRootEnvExample(config) });
   files.push({ relativePath: 'CLAUDE.md', content: renderRootClaudeMd(config) });
   files.push({ relativePath: '.claude/CLAUDE.md', content: renderProjectClaudeMd(config) });
+  files.push({ relativePath: 'docs/README.md', content: renderReadme(config) });
+  files.push({ relativePath: 'docs/env-vars.md', content: renderEnvVarsDoc(config) });
+}
+
+function buildOnPremManifest(config: ScaffoldConfig): FileEntry[] {
+  const files: FileEntry[] = [];
+
+  addRootFiles(files, config);
 
   // Aspire
   files.push({ relativePath: 'apphost.ts', content: renderAppHost(config) });
   files.push({ relativePath: 'aspire.config.json', content: renderAspireConfig(config) });
-
-  // Docs
-  files.push({ relativePath: 'docs/README.md', content: renderReadme(config) });
-  files.push({ relativePath: 'docs/env-vars.md', content: renderEnvVarsDoc(config) });
 
   // Scripts
   files.push({ relativePath: 'scripts/start-local.ps1', content: renderStartLocalPs1(config) });
@@ -89,34 +139,40 @@ function buildFileManifest(config: ScaffoldConfig): FileEntry[] {
   files.push({ relativePath: 'backend/src/services/db.ts', content: renderDbService(config) });
 
   // Frontend (conditional)
-  if (includeFrontend) {
-    files.push({ relativePath: 'frontend/package.json', content: renderFrontendPackageJson(config) });
-    files.push({ relativePath: 'frontend/angular.json', content: renderAngularJson(config) });
-    files.push({ relativePath: 'frontend/tsconfig.json', content: renderFrontendTsconfig(config) });
-    files.push({ relativePath: 'frontend/webpack.config.js', content: renderWebpackConfig(config) });
-    files.push({ relativePath: 'frontend/proxy.conf.js', content: renderProxyConf(config) });
-    files.push({
-      relativePath: `frontend/projects/${pluginName}/src/lib/${pluginName}.module.ts`,
-      content: renderPluginModule(config),
-    });
-    files.push({
-      relativePath: `frontend/projects/${pluginName}/src/lib/${pluginName}.component.ts`,
-      content: renderPluginComponent(config),
-    });
-    files.push({
-      relativePath: `frontend/projects/${pluginName}/src/lib/${pluginName}.service.ts`,
-      content: renderPluginService(config),
-    });
-    files.push({
-      relativePath: `frontend/projects/${pluginName}/src/lib/models.ts`,
-      content: renderModels(config),
-    });
-    files.push({
-      relativePath: `frontend/projects/${pluginName}/src/public-api.ts`,
-      content: renderPublicApi(config),
-    });
-    files.push({ relativePath: 'frontend/src/app/app.module.ts', content: renderDevAppModule(config) });
-    files.push({ relativePath: 'frontend/src/app/app.component.ts', content: renderDevAppComponent(config) });
+  if (config.includeFrontend) {
+    addFrontendFiles(files, config);
+  }
+
+  return files;
+}
+
+function buildSaasManifest(config: ScaffoldConfig): FileEntry[] {
+  const files: FileEntry[] = [];
+
+  addRootFiles(files, config);
+
+  // Scripts
+  files.push({ relativePath: 'scripts/start-local.ps1', content: renderSaasStartLocalPs1(config) });
+  files.push({ relativePath: 'scripts/start-local.sh', content: renderSaasStartLocalSh(config) });
+  files.push({ relativePath: 'scripts/deploy.ps1', content: renderSaasDeployPs1(config) });
+
+  // CI/CD
+  files.push({ relativePath: '.github/workflows/ci.yml', content: renderGitHubActions(config) });
+
+  // Backend (Azure Functions)
+  files.push({ relativePath: 'backend/package.json', content: renderSaasPackageJson(config) });
+  files.push({ relativePath: 'backend/tsconfig.json', content: renderSaasTsconfig(config) });
+  files.push({ relativePath: 'backend/host.json', content: renderHostJson(config) });
+  files.push({ relativePath: 'backend/local.settings.json.example', content: renderLocalSettingsExample(config) });
+  files.push({ relativePath: 'backend/src/functions/health.ts', content: renderSaasHealthFunction(config) });
+  files.push({ relativePath: 'backend/src/functions/api.ts', content: renderSaasSampleFunction(config) });
+  files.push({ relativePath: 'backend/src/config/env.ts', content: renderSaasEnvConfig(config) });
+  files.push({ relativePath: 'backend/src/middleware/authMiddleware.ts', content: renderSaasAuthMiddleware(config) });
+  files.push({ relativePath: 'backend/src/services/db.ts', content: renderSaasDbService(config) });
+
+  // Frontend (conditional, shared with on-prem)
+  if (config.includeFrontend) {
+    addFrontendFiles(files, config);
   }
 
   return files;
@@ -127,14 +183,15 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
 
   console.log(chalk.blue(`\nScaffolding ${chalk.bold(pluginName)}...\n`));
 
-  // Build file manifest
-  const files = buildFileManifest(config);
+  // Build file manifest based on project type
+  const files = config.projectType === 'saas'
+    ? buildSaasManifest(config)
+    : buildOnPremManifest(config);
 
   // Collect all unique directories
   const dirs = new Set<string>();
   for (const file of files) {
     const dir = path.dirname(path.join(outputDir, file.relativePath));
-    // Add the dir and all parent dirs up to outputDir
     let current = dir;
     while (current !== outputDir && current.startsWith(outputDir)) {
       dirs.add(current);
@@ -173,5 +230,6 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
   }
 
   // Summary
-  console.log(chalk.green(`\n✓ Project ${chalk.bold(pluginName)} created with ${files.length} files\n`));
+  const typeLabel = config.projectType === 'saas' ? 'SaaS' : 'on-prem';
+  console.log(chalk.green(`\n✓ Project ${chalk.bold(pluginName)} (${typeLabel}) created with ${files.length} files\n`));
 }

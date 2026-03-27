@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import { toKebabCase, toPascalCase, validatePluginName } from '../util/naming';
 import { generateFancyName } from '../util/name-generator';
 import { scaffold } from '../generators/scaffold';
-import type { ScaffoldConfig } from '../types/scaffold';
+import type { ProjectType, ScaffoldConfig } from '../types/scaffold';
 
 export interface InitFlags {
   noFrontend?: boolean;
@@ -41,12 +41,16 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
   const useDefaults = flags.yes || !isInteractive();
 
   // 1. Project type selection
-  if (!useDefaults) {
-    await select({
+  let projectType: ProjectType;
+  if (useDefaults) {
+    projectType = 'onprem';
+  } else {
+    projectType = await select<ProjectType>({
       message: 'Project type:',
       choices: [
-        { value: 'plugin', name: 'MESA Plugin' },
-        { value: 'standalone', name: `Standalone App ${chalk.yellow('(coming soon)')}`, disabled: true },
+        { value: 'onprem', name: 'Plugin (on premise)' },
+        { value: 'saas', name: 'Plugin (SaaS)' },
+        { value: 'standalone' as unknown as ProjectType, name: `Standalone App ${chalk.yellow('(coming soon)')}`, disabled: true },
       ],
     });
   }
@@ -127,6 +131,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
   const pluginClassName = toPascalCase(pluginName);
 
   const config: ScaffoldConfig = {
+    projectType,
     pluginName,
     pluginClassName,
     description,
@@ -178,11 +183,21 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
 
   // 10. Next steps
   console.log(chalk.blue.bold('  Next steps:\n'));
-  console.log(chalk.dim('  Prerequisites:'));
-  console.log('    - Docker Desktop (for SQL Server container)');
-  console.log('    - .NET SDK 10+ (for Aspire CLI): dotnet tool install -g aspire.cli\n');
-  console.log(chalk.dim('  Get started:'));
-  console.log(`    cd ${pluginName}`);
-  console.log('    npm run install:all');
-  console.log('    aspire run            # Starts SQL Server + backend' + (includeFrontend ? ' + frontend' : '') + ' + dashboard\n');
+  if (projectType === 'saas') {
+    console.log(chalk.dim('  Prerequisites:'));
+    console.log('    - Azure Functions Core Tools: npm i -g azure-functions-core-tools@4');
+    console.log('    - Azure CLI (optional): https://aka.ms/installazurecli\n');
+    console.log(chalk.dim('  Get started:'));
+    console.log(`    cd ${pluginName}`);
+    console.log('    npm run install:all');
+    console.log('    npm run dev            # Starts Azure Functions' + (includeFrontend ? ' + Angular dev server' : '') + '\n');
+  } else {
+    console.log(chalk.dim('  Prerequisites:'));
+    console.log('    - Docker Desktop (for SQL Server container)');
+    console.log('    - .NET SDK 10+ (for Aspire CLI): dotnet tool install -g aspire.cli\n');
+    console.log(chalk.dim('  Get started:'));
+    console.log(`    cd ${pluginName}`);
+    console.log('    npm run install:all');
+    console.log('    aspire run            # Starts SQL Server + backend' + (includeFrontend ? ' + frontend' : '') + ' + dashboard\n');
+  }
 }
