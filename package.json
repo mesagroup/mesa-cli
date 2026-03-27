@@ -1,7 +1,7 @@
 {
   "name": "@mesagroup/mesa-cli",
-  "version": "1.0.0",
-  "description": "CLI tool for scaffolding MESAPPA on-prem plugin projects",
+  "version": "1.1.0",
+  "description": "CLI tool for scaffolding MESAPPA plugin projects (on-prem and SaaS)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",
