@@ -1,103 +1,140 @@
 # MESA CLI
 
-Command-line tool for scaffolding **MESAPPA on-prem plugin** projects — complete with TypeScript + Express backend, optional Angular 16 frontend with Module Federation, and .NET Aspire orchestration.
+**MESA CLI** is an internal scaffolding tool for the MESA Group development team. It generates ready-to-code project structures for **MESAPPA plugins** — the modular extensions that power the MESAPPA platform.
 
-Works on **macOS** and **Windows**.
+The tool automates the tedious setup of boilerplate, security patterns, infrastructure configuration, and CI/CD pipelines, so that developers can focus on building business logic from minute one. Every generated project comes pre-configured with **Claude Code AI instructions** (CLAUDE.md), enabling AI-assisted development that follows MESA's coding standards and security constraints.
+
+## Why MESA CLI
+
+- **Consistent structure** across all plugin projects — same conventions, same security patterns, same deploy pipeline
+- **Two deployment targets**: on-premise (SQL Server + Express + Aspire) and SaaS (Azure Functions + Azure SQL)
+- **Environment assistant**: checks your machine for required tools and walks you through installing anything missing
+- **AI-ready**: every project ships with CLAUDE.md files that encode MESA's development rules (V1-V11), so Claude Code understands your constraints out of the box
+- **Cross-platform**: works on macOS and Windows
 
 ## Install
 
 ```bash
-pnpm install -g .
-```
-
-Or link locally for development:
-
-```bash
-pnpm build && pnpm link --global
+npm install -g @mesagroup/mesa-cli
 ```
 
 ## Quick Start
 
 ```bash
-# Interactive — walks you through name, description, frontend, GitHub repo
 mesa init
+```
 
-# Non-interactive with defaults
-mesa init my-plugin -y
+That's it. The interactive wizard handles the rest: project type, name, description, frontend, and optional GitHub repo creation.
 
-# Backend-only (no Angular frontend)
-mesa init my-plugin --no-frontend -y
+### Non-interactive mode
 
-# Preview without writing files
-mesa init my-plugin --dry-run -y
+```bash
+mesa init my-plugin -y                    # On-prem with frontend (defaults)
+mesa init my-plugin --no-frontend -y      # Backend only
+mesa init my-plugin --dry-run -y          # Preview without creating files
 ```
 
 ## Commands
 
 ### `mesa setup`
 
-Checks that all required development tools are installed and guides you through fixing anything missing.
+Verifies your development environment is ready. Checks and guides installation of:
 
-**Checks performed:**
-- **Node.js** (required)
-- **pnpm** (required)
-- **Git** (required) — also verifies `user.name` and `user.email` are configured
-- **GitHub CLI** (`gh`) — verifies authentication and org access to `mesagroup`
-- **Docker Desktop** (required for local SQL Server)
-- **.NET Aspire CLI** (optional, for orchestration)
+| Tool | Required | Purpose |
+|------|----------|---------|
+| Git | Yes | Version control; also checks `user.name` and `user.email` configuration |
+| Node.js | Yes | Runtime |
+| Docker | Yes | Local SQL Server container (on-prem) |
+| .NET SDK | Yes | Aspire orchestrator (on-prem) |
+| GitHub CLI (`gh`) | No | Repo creation; checks authentication and `mesagroup` org access |
+| Aspire CLI | Yes | Local dev orchestration (on-prem) |
 
-If a tool is missing, MESA CLI shows the exact install command for your platform and waits for you to install it before re-checking.
+If something is missing, MESA CLI shows the exact install command for your OS and waits for you to install it before re-checking.
 
-> `mesa setup` runs automatically on first use of `mesa init`.
+> Runs automatically on the first `mesa init`.
 
 ### `mesa init [name]`
 
-Scaffolds a complete MESAPPA plugin project:
+Scaffolds a MESAPPA plugin project. You choose between two project types:
+
+#### Plugin (On Premise)
+
+For MESAPPA instances deployed on customer infrastructure with SQL Server.
+
+- **Backend**: TypeScript + Express, compiled with `tsc`
+- **Frontend** (optional): Angular 16 + Module Federation
+- **Database**: SQL Server (Windows Auth or SQL Auth)
+- **Local dev**: .NET Aspire orchestrates SQL Server container + backend + frontend
+- **Auth**: JWT from MESAPPA host, verified with `jose`
+
+#### Plugin (SaaS)
+
+For cloud-hosted MESAPPA instances on Azure.
+
+- **Backend**: Azure Functions v4 (TypeScript, HTTP triggers)
+- **Frontend** (optional): Angular 16 + Module Federation
+- **Database**: Azure SQL
+- **Local dev**: Azure Functions Core Tools + `ng serve`
+- **CI/CD**: GitHub Actions workflow (build, test, deploy)
+- **Auth**: JWT via Azure Functions middleware
+
+### Generated structure (on-prem)
 
 ```
 my-plugin/
 ├── backend/
 │   ├── src/
 │   │   ├── config/env.ts          # Zod-validated env config
-│   │   ├── middleware/authJwt.ts   # JWT verification (jose)
-│   │   ├── routes/health.ts       # Health check with DB probe
-│   │   ├── routes/index.ts        # API router
-│   │   ├── services/db.ts         # MSSQL connection pool (Aspire-aware)
-│   │   └── server.ts              # Express + Helmet + CORS
+│   │   ├── middleware/authJwt.ts   # JWT verification
+│   │   ├── routes/                # Express routing + validation
+│   │   ├── services/db.ts         # MSSQL connection pool
+│   │   └── server.ts              # Express + Helmet + CORS whitelist
 │   ├── .env.example
-│   ├── nodemon.json
-│   ├── package.json
-│   └── tsconfig.json
-├── frontend/                      # (if --no-frontend is not set)
-│   ├── projects/<name>/src/
-│   │   ├── lib/<name>.module.ts
-│   │   ├── lib/<name>.component.ts
-│   │   ├── lib/<name>.service.ts
-│   │   ├── lib/models.ts          # MESAPPA V9 interfaces
-│   │   └── public-api.ts
-│   ├── src/app/                   # Dev shell app
-│   ├── angular.json
-│   ├── webpack.config.js          # Module Federation
-│   ├── proxy.conf.js
-│   ├── package.json
-│   └── tsconfig.json
-├── aspire/
-│   └── apphost.ts                 # .NET Aspire orchestrator
-├── scripts/
-│   ├── start-local.ps1
-│   ├── start-local.sh
-│   └── deploy.ps1
-├── docs/
-│   ├── README.md
-│   └── env-vars.md
-├── .claude/CLAUDE.md              # AI coding rules for Claude Code
-├── CLAUDE.md                      # Project-level AI instructions
+│   └── package.json
+├── frontend/                      # (optional)
+│   ├── projects/<name>/           # Plugin library (Module Federation)
+│   ├── src/app/                   # Dev shell
+│   ├── webpack.config.js
+│   └── package.json
+├── aspire/apphost.ts              # Orchestrator
+├── scripts/                       # start-local + deploy (ps1/sh)
+├── docs/                          # README + env variable reference
+├── .claude/CLAUDE.md              # AI rules for Claude Code
+├── CLAUDE.md
 ├── .env.example
-├── .gitignore
-└── package.json                   # Root workspace scripts
+└── .gitignore
 ```
 
-**Options:**
+### Generated structure (SaaS)
+
+```
+my-plugin/
+├── backend/
+│   ├── src/
+│   │   ├── functions/             # Azure Function triggers
+│   │   ├── config/env.ts
+│   │   ├── middleware/             # JWT auth middleware
+│   │   └── services/db.ts         # Azure SQL connection
+│   ├── host.json
+│   ├── local.settings.json.example
+│   └── package.json
+├── frontend/                      # (optional, same as on-prem)
+├── .github/workflows/ci.yml      # GitHub Actions CI/CD
+├── scripts/
+├── docs/
+├── .claude/CLAUDE.md
+└── .gitignore
+```
+
+### `mesa login`
+
+Authenticate with a MESA instance.
+
+```bash
+mesa login --tenant-id=mesappa
+```
+
+## Init options
 
 | Flag | Description |
 |------|-------------|
@@ -107,45 +144,42 @@ my-plugin/
 | `--dry-run` | Preview generated files without writing |
 | `-y, --yes` | Skip prompts, use auto-generated defaults |
 
-After scaffolding, the CLI optionally creates a GitHub repo on `mesagroup` and pushes the initial commit.
+## After scaffolding
 
-### `mesa login`
-
-Authenticate with a MESA instance.
-
-| Flag | Description |
-|------|-------------|
-| `--tenant-id <id>` | Tenant ID (default: `MESA_INSTANCE` env var or `default`) |
-
-## Generated Project — Getting Started
+### On-prem
 
 ```bash
 cd my-plugin
-
-# Install all dependencies
 npm run install:all
-
-# Start with Aspire (recommended)
-aspire run
-
-# Or start manually
-cd backend && npm run dev
-cd frontend && npm start     # if frontend is present
+aspire run             # SQL Server + backend + frontend + dashboard
 ```
 
-### Prerequisites for Generated Projects
-
-| Tool | Purpose |
-|------|---------|
-| Docker Desktop | SQL Server container |
-| .NET SDK 10+ | Aspire orchestrator |
-| Aspire CLI | `dotnet tool install -g aspire.cli` |
-| Node.js 20+ | Runtime |
-| pnpm | Package manager |
-
-## Development
+### SaaS
 
 ```bash
+cd my-plugin
+npm run install:all
+npm run dev            # Azure Functions + Angular dev server
+```
+
+## Security rules enforced (V1-V11)
+
+Every generated project embeds these constraints in CLAUDE.md, so both humans and AI follow them:
+
+- **V1**: No secrets in tracked files
+- **V2**: JWT required on all endpoints (except `/api/health`)
+- **V3**: All SQL uses parameterized queries
+- **V4**: No stack traces or internal messages in HTTP responses
+- **V5**: No file exceeds ~400 lines without splitting
+- **V6**: Business logic in `services/`, routes only validate + orchestrate
+- **V8**: `.env` in `.gitignore`, only `.env.example` committed
+- **V10**: CORS with explicit origin whitelist
+
+## Contributing
+
+```bash
+git clone https://github.com/mesagroup/mesa-cli.git
+cd mesa-cli
 pnpm install
 pnpm build          # Build CLI
 pnpm dev            # Watch mode
@@ -153,13 +187,12 @@ pnpm lint           # xo + prettier
 pnpm test           # vitest
 ```
 
-## Tech Stack
+### Tech stack
 
 - **TypeScript** + **tsup** (bundler)
-- **meow** (CLI framework)
-- **@inquirer/prompts** (interactive prompts)
+- **meow** (CLI framework) + **@inquirer/prompts** (interactive wizard)
 - **chalk** (terminal styling)
-- **zod** (env validation in generated projects)
+- **pnpm** 10.9.0
 
 ## License
 
