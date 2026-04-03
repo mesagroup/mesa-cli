@@ -13,7 +13,7 @@ const cli = meow(
     $ mesa <command> [options]
 
   Commands
-    init     Scaffold a new MESAPPA plugin project
+    init     Scaffold a new MESAPPA plugin or standalone PoC project
     setup    Check and install required development tools
     login    Login to your account and obtain an auth token
 

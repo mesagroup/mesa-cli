@@ -1,0 +1,35 @@
+import type {ScaffoldConfig} from '../../types/scaffold';
+
+export function render(config: ScaffoldConfig): string {
+	return JSON.stringify(
+		{
+			name: `${config.pluginName}-frontend`,
+			version: '0.1.0',
+			description: `${config.description} - Frontend`,
+			author: config.author,
+			private: true,
+			type: 'module',
+			scripts: {
+				dev: 'vite',
+				build: 'tsc -b && vite build',
+				preview: 'vite preview',
+			},
+			dependencies: {
+				react: '^19.0.0',
+				'react-dom': '^19.0.0',
+			},
+			devDependencies: {
+				'@types/react': '^19.0.0',
+				'@types/react-dom': '^19.0.0',
+				'@vitejs/plugin-react': '^4.3.0',
+				autoprefixer: '^10.4.20',
+				postcss: '^8.4.49',
+				tailwindcss: '^3.4.17',
+				typescript: '^5.7.2',
+				vite: '^6.0.0',
+			},
+		},
+		null,
+		2,
+	);
+}

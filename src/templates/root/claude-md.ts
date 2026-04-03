@@ -4,7 +4,7 @@ import type {ScaffoldConfig} from '../../types/scaffold';
  * Generates the root CLAUDE.md with project overview and commands.
  */
 export function renderRoot(config: ScaffoldConfig): string {
-	const isSaas = config.projectType === 'saas';
+	const { projectType } = config;
 	const lines = [
 		`# ${config.pluginName}`,
 		``,
@@ -14,7 +14,13 @@ export function renderRoot(config: ScaffoldConfig): string {
 		``,
 	];
 
-	if (isSaas) {
+	if (projectType === 'standalone') {
+		lines.push(
+			`- **Backend**: Express 4 + TypeScript + SQL Server (mssql)`,
+			`- **Frontend**: ${config.includeFrontend ? 'Next.js + Tailwind CSS' : 'Not included'}`,
+			`- **Orchestration**: .NET Aspire (Node.js hosting)`,
+		);
+	} else if (projectType === 'saas') {
 		lines.push(
 			`- **Backend**: Azure Functions v4 + TypeScript + SQL Server (mssql)`,
 			`- **Frontend**: ${config.includeFrontend ? 'Angular 16 + Module Federation' : 'Not included'}`,
@@ -56,9 +62,14 @@ export function renderRoot(config: ScaffoldConfig): string {
 		);
 	}
 
-	const rulesRef = isSaas
-		? `See \`.claude/CLAUDE.md\` for the full MESAPPA SaaS plugin development rules.`
-		: `See \`.claude/CLAUDE.md\` for the full MESAPPA on-prem development rules.`;
+	let rulesRef: string;
+	if (projectType === 'standalone') {
+		rulesRef = `See \`.claude/CLAUDE.md\` for the full standalone PoC development rules.`;
+	} else if (projectType === 'saas') {
+		rulesRef = `See \`.claude/CLAUDE.md\` for the full MESAPPA SaaS plugin development rules.`;
+	} else {
+		rulesRef = `See \`.claude/CLAUDE.md\` for the full MESAPPA on-prem development rules.`;
+	}
 
 	lines.push(`## Rules`, ``, rulesRef, ``);
 
@@ -70,11 +81,161 @@ export function renderRoot(config: ScaffoldConfig): string {
  * Dispatches to on-prem or SaaS rules based on projectType.
  */
 export function renderProject(config: ScaffoldConfig): string {
+	if (config.projectType === 'standalone') {
+		return renderStandaloneProject(config);
+	}
+
 	if (config.projectType === 'saas') {
 		return renderSaasProject(config);
 	}
 
 	return renderOnPremProject(config);
+}
+
+function renderStandaloneProject(config: ScaffoldConfig): string {
+	return [
+		`# Standalone App Development Rules`,
+		``,
+		`Project: **${config.pluginName}**`,
+		``,
+		`## Stack`,
+		``,
+		`- Express 4 with TypeScript (backend API)`,
+		`- SQL Server (database, via mssql driver)`,
+		`- ${config.includeFrontend ? 'Next.js + Tailwind CSS (frontend)' : 'No frontend'}`,
+		`- .NET Aspire for local orchestration`,
+		``,
+		`## Repository Structure`,
+		``,
+		`\`\`\``,
+		`${config.pluginName}/`,
+		`  backend/          # Express API`,
+		`    src/`,
+		`      routes/       # Route handlers (thin layer)`,
+		`      services/     # Business logic`,
+		`      middleware/    # Auth, validation, error handling`,
+		`      config/       # Environment & DB config`,
+		`      server.ts     # Entry point`,
+		`  frontend/         # Next.js app (optional)`,
+		`    src/app/        # App Router pages`,
+		`  scripts/          # PowerShell & Bash helpers`,
+		`  docs/             # Documentation`,
+		`  apphost.ts        # Aspire orchestrator`,
+		`\`\`\``,
+		``,
+		`## Constraints`,
+		``,
+		`### V1 - Standalone Application`,
+		`This is a standalone application, not a MESAPPA plugin. It does not use Module`,
+		`Federation and is not designed to be embedded in the MESAPPA host. All infrastructure`,
+		`runs on-prem (Docker containers or bare metal). No AWS/Azure/GCP SDK calls.`,
+		``,
+		`### V2 - SQL Server Only`,
+		`Use SQL Server as the sole database. No ORM magic; use parameterized queries`,
+		`via the \`mssql\` package. All queries must use \`sql.input()\` for parameters.`,
+		``,
+		`### V3 - Express Routes Are Thin`,
+		`Route handlers call services. Business logic lives in \`services/\`, not in route`,
+		`files. Routes handle request parsing, call the service, and return the response.`,
+		``,
+		`### V4 - CORS Whitelist`,
+		`CORS origins are configured via \`CORS_ORIGIN\` env var. Never use \`origin: true\``,
+		`or \`origin: '*'\` in production. Whitelist specific origins only.`,
+		``,
+		`### V5 - JWT Authentication`,
+		`Use \`jose\` for JWT verification. Validate issuer, audience, and expiration.`,
+		`Never decode without verification. Auth middleware protects all non-public routes.`,
+		``,
+		`### V6 - Helmet Security Headers`,
+		`Always use \`helmet()\` middleware. Do not disable any default protections without`,
+		`explicit justification in comments.`,
+		``,
+		`### V7 - Reproducible Builds`,
+		`Use \`npm ci\` (not \`npm install\`) in CI/CD and deploy scripts. Requires a`,
+		`committed \`package-lock.json\`. Backend builds use \`tsc\`.${config.includeFrontend ? ' Frontend builds use `next build`.' : ''}`,
+		``,
+		`### V8 - No Hardcoded Paths`,
+		`All file paths must be relative or derived from environment variables.`,
+		`Never hardcode absolute paths in source code or scripts.`,
+		``,
+		`### V9 - Environment via .env`,
+		`Use \`dotenv\` for local development. In production, environment variables are`,
+		`injected by the deployment platform. Never commit \`.env\` files.`,
+		``,
+		`### V10 - Zod Validation`,
+		`Validate all external inputs (request bodies, query params) with Zod schemas.`,
+		`Define schemas next to the routes or services that use them.`,
+		``,
+		`### V11 - Error Handling`,
+		`Use a centralized error-handling middleware. Return consistent error shapes:`,
+		`\`{ error: string, details?: unknown }\`. Never leak stack traces in production.`,
+		``,
+		`## Security Rules`,
+		``,
+		`- All SQL queries MUST use parameterized inputs (\`sql.input()\`)`,
+		`- Never concatenate user input into SQL strings`,
+		`- JWT tokens must be verified on every protected request`,
+		`- Secrets are never logged or returned in API responses`,
+		`- Use HTTPS in production; configure TLS termination at the reverse proxy`,
+		``,
+		...(config.includeFrontend
+			? [
+				`## Frontend Rules (Next.js)`,
+				``,
+				`- Use App Router with Server Components by default`,
+				`- Add \`'use client'\` only where interactivity is required`,
+				`- Use \`next/image\` for images and \`next/font\` for fonts`,
+				`- Tailwind CSS for styling — no inline style objects`,
+				`- Proxy API requests to Express backend via \`next.config.ts\` rewrites`,
+				`- Keep components focused: one responsibility per file`,
+				`- Use \`next/link\` for client-side navigation`,
+				``,
+			]
+			: []),
+		`## Backend Rules`,
+		``,
+		`- Routes are thin; services contain business logic (V3)`,
+		`- CORS whitelist only; no wildcard origins (V4)`,
+		`- All queries parameterized via \`mssql\` \`sql.input()\` (V2)`,
+		`- Use \`helmet()\` defaults (V6)`,
+		`- Validate inputs with Zod (V10)`,
+		`- Centralized error handler (V11)`,
+		``,
+		...(config.deployTarget === 'azure'
+			? [
+				`## CI/CD Rules (Azure via Aspire)`,
+				``,
+				`- Pipeline: build + test on every PR`,
+				`- Deploy via \`azd up\` from protected branch (main)`,
+				`- Use GitHub OIDC for Azure authentication — no stored credentials`,
+				`- Secrets in GitHub Secrets (\`AZURE_CLIENT_ID\`, \`AZURE_TENANT_ID\`, \`AZURE_SUBSCRIPTION_ID\`)`,
+				`- Post-deploy smoke test: health endpoint returns 200`,
+				``,
+			]
+			: [
+				`## CI/CD Rules (Vercel)`,
+				``,
+				`- Pipeline: build + test on every PR`,
+				`- Frontend deploys to Vercel (preview on PR, production on main)`,
+				`- Backend must be deployed separately (Docker, VM, cloud)`,
+				`- Secrets in GitHub Secrets (\`VERCEL_TOKEN\`, \`VERCEL_ORG_ID\`, \`VERCEL_PROJECT_ID\`)`,
+				`- Post-deploy smoke test: health endpoint returns 200`,
+				``,
+			]),
+		`## Anti-Patterns to Block`,
+		``,
+		`- **No \`any\` types** - Use \`unknown\` and narrow, or define proper types`,
+		`- **No string-concatenated SQL** - Always parameterize`,
+		`- **No \`cors({ origin: true })\`** - Whitelist origins explicitly`,
+		`- **No business logic in routes** - Extract to services`,
+		`- **No \`npm install\` in CI** - Use \`npm ci\``,
+		`- **No hardcoded absolute paths** - Use relative paths or env vars`,
+		`- **No committed .env files** - Use .env.example as template`,
+		`- **No cloud SDK imports** - On-prem only`,
+		`- **No unvalidated request bodies** - Zod-validate everything`,
+		`- **No disabled Helmet headers** - Keep defaults enabled`,
+		``,
+	].join('\n');
 }
 
 function renderOnPremProject(config: ScaffoldConfig): string {

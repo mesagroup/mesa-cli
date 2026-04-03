@@ -1,21 +1,32 @@
 import type {ScaffoldConfig} from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	const isSaas = config.projectType === 'saas';
+	const { projectType } = config;
 
-	const scripts: Record<string, string> = isSaas
-		? {
-			dev: 'npm run dev --prefix backend',
-			build: 'npm run build --prefix backend',
-			start: 'npm run start --prefix backend',
-			'install:all': 'npm install --prefix backend',
-		}
-		: {
+	let scripts: Record<string, string>;
+
+	if (projectType === 'standalone') {
+		scripts = {
 			dev: 'aspire run',
 			build: 'npm run build --prefix backend',
 			start: 'node backend/dist/server.js',
 			'install:all': 'npm install --prefix backend',
 		};
+	} else if (projectType === 'saas') {
+		scripts = {
+			dev: 'npm run dev --prefix backend',
+			build: 'npm run build --prefix backend',
+			start: 'npm run start --prefix backend',
+			'install:all': 'npm install --prefix backend',
+		};
+	} else {
+		scripts = {
+			dev: 'aspire run',
+			build: 'npm run build --prefix backend',
+			start: 'node backend/dist/server.js',
+			'install:all': 'npm install --prefix backend',
+		};
+	}
 
 	if (config.includeFrontend) {
 		scripts.build += ' && npm run build --prefix frontend';

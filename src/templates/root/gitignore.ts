@@ -16,7 +16,9 @@ export function render(config: ScaffoldConfig): string {
 		'',
 	];
 
-	if (config.projectType === 'saas') {
+	if (config.projectType === 'standalone') {
+		lines.push('# Aspire', '.modules/', '', '# Next.js', '.next/', '');
+	} else if (config.projectType === 'saas') {
 		lines.push('# Azure Functions', 'local.settings.json', '');
 	} else {
 		lines.push('# Aspire', '.modules/', '');

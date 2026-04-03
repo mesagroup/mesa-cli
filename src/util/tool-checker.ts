@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import type { ProjectType } from '../types/scaffold';
 
 export interface ToolInfo {
   name: string;
@@ -99,6 +100,15 @@ export function checkTool(tool: ToolInfo): ToolStatus {
 
 export function checkAllTools(): ToolStatus[] {
   return TOOLS.map(tool => checkTool(tool));
+}
+
+/**
+ * Returns tools relevant for a specific project type.
+ * Both standalone and on-prem need all tools (Git, Node, Docker, .NET, Aspire).
+ * SaaS replaces Aspire/.NET with Azure Functions.
+ */
+export function getToolsForProjectType(projectType: ProjectType): ToolInfo[] {
+  return TOOLS;
 }
 
 export function getInstallCommand(tool: ToolInfo): string {

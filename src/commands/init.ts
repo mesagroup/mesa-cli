@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import { toKebabCase, toPascalCase, validatePluginName } from '../util/naming';
 import { generateFancyName } from '../util/name-generator';
 import { scaffold } from '../generators/scaffold';
-import type { ProjectType, ScaffoldConfig } from '../types/scaffold';
+import type { ProjectType, DeployTarget, DatabaseType, FrontendType, MongoMode, ScaffoldConfig } from '../types/scaffold';
 
 export interface InitFlags {
   noFrontend?: boolean;
@@ -50,12 +50,14 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
       choices: [
         { value: 'onprem', name: 'Plugin (on premise)' },
         { value: 'saas', name: 'Plugin (SaaS)' },
-        { value: 'standalone' as unknown as ProjectType, name: `Standalone App ${chalk.yellow('(coming soon)')}`, disabled: true },
+        { value: 'standalone', name: 'Standalone App (PoC)' },
       ],
     });
   }
 
-  // 2. Plugin name (with fancy default)
+  // 2. Project/plugin name (with fancy default)
+  const isStandalone = projectType === 'standalone';
+  const nameLabel = isStandalone ? 'Project name:' : 'Plugin name:';
   const fancyDefault = generateFancyName();
   let pluginName: string;
 
@@ -66,7 +68,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     console.log(chalk.dim(`  Using generated name: ${chalk.bold(pluginName)}\n`));
   } else {
     const rawName = await input({
-      message: 'Plugin name:',
+      message: nameLabel,
       default: fancyDefault,
       validate(value) {
         const result = validatePluginName(toKebabCase(value));
@@ -83,29 +85,96 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
   }
 
   // 3. Description
+  const defaultDescription = isStandalone ? 'Standalone PoC app' : 'MESAPPA plugin';
   let description: string;
   if (flags.description) {
     description = flags.description;
   } else if (useDefaults) {
-    description = 'MESAPPA plugin';
+    description = defaultDescription;
   } else {
     description = await input({
       message: 'Description:',
-      default: 'MESAPPA plugin',
+      default: defaultDescription,
     });
   }
 
-  // 4. Include frontend?
-  let includeFrontend: boolean;
-  if (flags.noFrontend !== undefined && flags.noFrontend) {
-    includeFrontend = false;
-  } else if (useDefaults) {
-    includeFrontend = true;
+  // 4. Standalone options (database, frontend, deploy target)
+  let includeFrontend = true;
+  let deployTarget: DeployTarget | undefined;
+  let database: DatabaseType | undefined;
+  let frontend: FrontendType | undefined;
+  let mongoMode: MongoMode | undefined;
+
+  if (isStandalone) {
+    // Ask whether to accept defaults or customise
+    let acceptDefaults = useDefaults;
+    if (!useDefaults) {
+      acceptDefaults = await confirm({
+        message: 'Use defaults? (Next.js full-stack + SQL Server + Vercel)',
+        default: true,
+      });
+    }
+
+    if (acceptDefaults) {
+      database = 'sqlserver';
+      frontend = 'nextjs';
+      deployTarget = 'vercel';
+      includeFrontend = true;
+    } else {
+      // Database
+      database = await select<DatabaseType>({
+        message: 'Database:',
+        choices: [
+          { value: 'sqlserver', name: 'SQL Server' },
+          { value: 'postgresql', name: 'PostgreSQL' },
+          { value: 'mongodb', name: 'MongoDB' },
+        ],
+      });
+
+      // MongoDB mode
+      if (database === 'mongodb') {
+        mongoMode = await select<MongoMode>({
+          message: 'MongoDB mode:',
+          choices: [
+            { value: 'local', name: 'Local (Docker container via Aspire)' },
+            { value: 'atlas', name: 'Cloud (MongoDB Atlas)' },
+          ],
+        });
+      }
+
+      // Frontend framework
+      frontend = await select<FrontendType>({
+        message: 'Frontend:',
+        choices: [
+          { value: 'nextjs', name: 'Next.js (full-stack — API routes, no separate backend)' },
+          { value: 'angular', name: 'Angular 16 (with Express backend)' },
+          { value: 'react-vite', name: 'React + Vite (with Express backend)' },
+        ],
+      });
+
+      includeFrontend = true;
+
+      // Deploy target
+      deployTarget = await select<DeployTarget>({
+        message: 'Deployment target:',
+        choices: [
+          { value: 'vercel', name: 'Vercel' },
+          { value: 'azure', name: 'Azure (full stack via Aspire + azd)' },
+        ],
+      });
+    }
   } else {
-    includeFrontend = await confirm({
-      message: 'Include Angular 16 frontend?',
-      default: true,
-    });
+    // Plugin types: Angular frontend prompt
+    if (flags.noFrontend !== undefined && flags.noFrontend) {
+      includeFrontend = false;
+    } else if (useDefaults) {
+      includeFrontend = true;
+    } else {
+      includeFrontend = await confirm({
+        message: 'Include Angular 16 frontend?',
+        default: true,
+      });
+    }
   }
 
   // 5. Author
@@ -137,6 +206,10 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     description,
     author,
     includeFrontend,
+    deployTarget,
+    database,
+    frontend,
+    mongoMode,
     outputDir,
   };
 
@@ -183,7 +256,49 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
 
   // 10. Next steps
   console.log(chalk.blue.bold('  Next steps:\n'));
-  if (projectType === 'saas') {
+  if (projectType === 'standalone') {
+    const needsDocker = !(database === 'mongodb' && mongoMode === 'atlas');
+    const isFullStack = frontend === 'nextjs';
+    const dbLabel = database === 'postgresql' ? 'PostgreSQL' : database === 'mongodb' ? 'MongoDB' : 'SQL Server';
+
+    console.log(chalk.dim('  Prerequisites:'));
+    if (needsDocker) {
+      console.log(`    - Docker Desktop (for ${dbLabel} container)`);
+      console.log('    - .NET SDK 10+ (for Aspire CLI): dotnet tool install -g aspire.cli');
+    }
+
+    if (deployTarget === 'azure') {
+      console.log('    - Azure Developer CLI (azd): https://aka.ms/azd-install');
+    }
+
+    console.log('');
+    console.log(chalk.dim('  Get started:'));
+    console.log(`    cd ${pluginName}`);
+    if (isFullStack) {
+      console.log('    npm install');
+      if (needsDocker) {
+        console.log(`    aspire run            # Starts ${dbLabel} + Next.js app + dashboard`);
+      } else {
+        console.log('    npm run dev           # Starts Next.js app (connects to Atlas)');
+      }
+    } else {
+      console.log('    npm run install:all');
+      if (needsDocker) {
+        const feLabel = frontend === 'angular' ? 'Angular' : 'React';
+        console.log(`    aspire run            # Starts ${dbLabel} + backend + ${feLabel} frontend + dashboard`);
+      } else {
+        console.log('    npm run dev');
+      }
+    }
+
+    console.log('');
+    console.log(chalk.dim('  Deploy:'));
+    if (deployTarget === 'azure') {
+      console.log('    azd up                # Deploy full stack to Azure via Aspire\n');
+    } else {
+      console.log('    vercel                # Deploy to Vercel\n');
+    }
+  } else if (projectType === 'saas') {
     console.log(chalk.dim('  Prerequisites:'));
     console.log('    - Azure Functions Core Tools: npm i -g azure-functions-core-tools@4');
     console.log('    - Azure CLI (optional): https://aka.ms/installazurecli\n');

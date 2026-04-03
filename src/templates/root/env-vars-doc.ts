@@ -78,3 +78,4 @@ export function render(config: ScaffoldConfig): string {
 
 	return lines.join('\n');
 }
+

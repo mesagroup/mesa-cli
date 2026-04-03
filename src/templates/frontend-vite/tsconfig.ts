@@ -1,0 +1,29 @@
+import type {ScaffoldConfig} from '../../types/scaffold';
+
+export function render(_config: ScaffoldConfig): string {
+	return JSON.stringify(
+		{
+			compilerOptions: {
+				target: 'ES2020',
+				useDefineForClassFields: true,
+				lib: ['ES2020', 'DOM', 'DOM.Iterable'],
+				module: 'ESNext',
+				skipLibCheck: true,
+				moduleResolution: 'bundler',
+				allowImportingTsExtensions: true,
+				isolatedModules: true,
+				moduleDetection: 'force',
+				noEmit: true,
+				jsx: 'react-jsx',
+				strict: true,
+				noUnusedLocals: true,
+				noUnusedParameters: true,
+				noFallthroughCasesInSwitch: true,
+				noUncheckedSideEffectImports: true,
+			},
+			include: ['src'],
+		},
+		null,
+		2,
+	);
+}

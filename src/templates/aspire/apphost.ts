@@ -18,13 +18,17 @@ export function render(config: ScaffoldConfig): string {
 	];
 
 	if (config.includeFrontend) {
+		const isStandalone = config.projectType === 'standalone';
+		const frontendComment = isStandalone ? '// Next.js frontend' : '// Angular frontend';
+		const frontendScript = isStandalone ? 'dev' : 'start';
+		const frontendPort = isStandalone ? 3001 : 4200;
 		lines.push(
 			``,
-			`// Angular frontend`,
+			frontendComment,
 			`const web = await builder`,
-			`  .addNpmApp('web', './frontend', 'start')`,
+			`  .addNpmApp('web', './frontend', '${frontendScript}')`,
 			`  .withReference(api)`,
-			`  .withHttpEndpoint({ port: 4200, env: 'PORT' });`,
+			`  .withHttpEndpoint({ port: ${frontendPort}, env: 'PORT' });`,
 		);
 	}
 
