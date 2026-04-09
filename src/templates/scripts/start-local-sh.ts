@@ -36,7 +36,7 @@ export function render(_config: ScaffoldConfig): string {
 		`else`,
 		`  echo ""`,
 		`  echo "Aspire CLI is not installed. To install it:"`,
-		`  echo "  dotnet tool install -g aspirate"`,
+		`  echo "  curl -sSL https://aspire.dev/install.sh | bash"`,
 		`  echo ""`,
 		`  echo "Alternatively, start services manually:"`,
 		`  echo "  1. Start SQL Server via Docker:"`,

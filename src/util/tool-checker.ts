@@ -63,15 +63,15 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /([\d.]+)/,
     installMac: 'brew install dotnet',
     installWin: 'winget install --id Microsoft.DotNet.SDK.10',
-    required: true,
+    required: false,
   },
   {
     name: 'aspire',
     displayName: 'Aspire CLI',
     checkCommand: 'aspire --version',
     versionPattern: /([\d.]+)/,
-    installMac: 'dotnet tool install -g aspire.cli',
-    installWin: 'dotnet tool install -g aspire.cli',
+    installMac: 'curl -sSL https://aspire.dev/install.sh | bash',
+    installWin: 'irm https://aspire.dev/install.ps1 | iex',
     required: true,
   },
 ];

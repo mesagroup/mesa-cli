@@ -272,7 +272,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     console.log(chalk.dim('  Prerequisites:'));
     if (needsDocker) {
       console.log(`    - Docker Desktop (for ${dbLabel} container)`);
-      console.log('    - .NET SDK 10+ (for Aspire CLI): dotnet tool install -g aspire.cli');
+      console.log('    - Aspire CLI 13.2+: curl -sSL https://aspire.dev/install.sh | bash');
     }
 
     if (deployTarget === 'azure') {
@@ -317,7 +317,7 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
   } else {
     console.log(chalk.dim('  Prerequisites:'));
     console.log('    - Docker Desktop (for SQL Server container)');
-    console.log('    - .NET SDK 10+ (for Aspire CLI): dotnet tool install -g aspire.cli\n');
+    console.log('    - Aspire CLI 13.2+: curl -sSL https://aspire.dev/install.sh | bash\n');
     console.log(chalk.dim('  Get started:'));
     console.log(`    cd ${pluginName}`);
     console.log('    npm run install:all');

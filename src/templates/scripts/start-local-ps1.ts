@@ -37,7 +37,7 @@ export function render(_config: ScaffoldConfig): string {
 		`} else {`,
 		`    Write-Host ""`,
 		`    Write-Host "Aspire CLI is not installed. To install it:" -ForegroundColor Yellow`,
-		`    Write-Host "  dotnet tool install -g aspirate" -ForegroundColor White`,
+		`    Write-Host "  irm https://aspire.dev/install.ps1 | iex" -ForegroundColor White`,
 		`    Write-Host ""`,
 		`    Write-Host "Alternatively, start services manually:" -ForegroundColor Yellow`,
 		`    Write-Host "  1. Start SQL Server via Docker:" -ForegroundColor White`,

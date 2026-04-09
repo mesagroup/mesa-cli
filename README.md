@@ -7,7 +7,7 @@ The tool automates the tedious setup of boilerplate, security patterns, infrastr
 ## Why MESA CLI
 
 - **Consistent structure** across all plugin projects — same conventions, same security patterns, same deploy pipeline
-- **Two deployment targets**: on-premise (SQL Server + Express + Aspire) and SaaS (Azure Functions + Azure SQL)
+- **Three project types**: on-premise plugin, SaaS plugin, and standalone PoC with configurable stack
 - **Environment assistant**: checks your machine for required tools and walks you through installing anything missing
 - **AI-ready**: every project ships with CLAUDE.md files that encode MESA's development rules (V1-V11), so Claude Code understands your constraints out of the box
 - **Cross-platform**: works on macOS and Windows
@@ -29,9 +29,10 @@ That's it. The interactive wizard handles the rest: project type, name, descript
 ### Non-interactive mode
 
 ```bash
-mesa init my-plugin -y                    # On-prem with frontend (defaults)
-mesa init my-plugin --no-frontend -y      # Backend only
-mesa init my-plugin --dry-run -y          # Preview without creating files
+mesa init my-plugin -y                          # On-prem with frontend (defaults)
+mesa init my-plugin --type standalone -y        # Standalone PoC (Next.js + SQL Server + Vercel)
+mesa init my-plugin --no-frontend -y            # Backend only
+mesa init my-plugin --dry-run -y                # Preview without creating files
 ```
 
 ## Commands
@@ -44,10 +45,10 @@ Verifies your development environment is ready. Checks and guides installation o
 |------|----------|---------|
 | Git | Yes | Version control; also checks `user.name` and `user.email` configuration |
 | Node.js | Yes | Runtime |
-| Docker | Yes | Local SQL Server container (on-prem) |
-| .NET SDK | Yes | Aspire orchestrator (on-prem) |
+| Docker | Yes | Local database containers |
+| .NET SDK | No | Only needed for C# AppHost projects |
 | GitHub CLI (`gh`) | No | Repo creation; checks authentication and `mesagroup` org access |
-| Aspire CLI | Yes | Local dev orchestration (on-prem) |
+| Aspire CLI 13.2+ | Yes | Local dev orchestration (TypeScript AppHost) |
 
 If something is missing, MESA CLI shows the exact install command for your OS and waits for you to install it before re-checking.
 
@@ -55,7 +56,19 @@ If something is missing, MESA CLI shows the exact install command for your OS an
 
 ### `mesa init [name]`
 
-Scaffolds a MESAPPA plugin project. You choose between two project types:
+Scaffolds a MESAPPA plugin or standalone PoC project. You choose between three project types:
+
+#### Stack comparison
+
+| Type | Backend | Frontend | Database | Orchestrator | Deploy | CI/CD |
+|------|---------|----------|----------|-------------|--------|-------|
+| **onprem** | Express | Angular 16 (MF) | SQL Server | Aspire | — | — |
+| **saas** | Azure Functions v4 | Angular 16 (MF) | Azure SQL | — | Azure | GitHub Actions |
+| **standalone** (defaults) | Next.js API routes | Next.js | SQL Server | Aspire | Vercel | GitHub Actions |
+| **standalone** + angular | Express | Angular 16 | SQL Server / PostgreSQL / MongoDB | Aspire* | Vercel / Azure | GitHub Actions |
+| **standalone** + react-vite | Express | React + Vite | SQL Server / PostgreSQL / MongoDB | Aspire* | Vercel / Azure | GitHub Actions |
+
+\* Aspire is skipped when MongoDB Atlas is selected. All backends use TypeScript. Auth is JWT (jose) for Express-based, Azure AD middleware for SaaS.
 
 #### Plugin (On Premise)
 
@@ -77,6 +90,19 @@ For cloud-hosted MESAPPA instances on Azure.
 - **Local dev**: Azure Functions Core Tools + `ng serve`
 - **CI/CD**: GitHub Actions workflow (build, test, deploy)
 - **Auth**: JWT via Azure Functions middleware
+
+#### Standalone App (PoC)
+
+For proof-of-concept applications with a configurable stack.
+
+- **Backend**: Next.js API routes (full-stack) or Express (monorepo)
+- **Frontend**: Next.js, Angular 16, or React + Vite
+- **Database**: SQL Server, PostgreSQL, or MongoDB (local Docker or Atlas)
+- **Local dev**: Aspire orchestrates database + app services
+- **Deploy**: Vercel or Azure (via Aspire + azd)
+- **CI/CD**: GitHub Actions
+
+Defaults to Next.js full-stack + SQL Server + Vercel when using `--yes` or accepting defaults in the wizard.
 
 ### Generated structure (on-prem)
 
@@ -138,6 +164,7 @@ mesa login --tenant-id=mesappa
 
 | Flag | Description |
 |------|-------------|
+| `--type <type>` | Project type: `onprem`, `saas`, or `standalone` (default: `onprem`) |
 | `--no-frontend` | Skip Angular frontend generation |
 | `--author <name>` | Author name (default: `git config user.name`) |
 | `--description <text>` | Plugin description |

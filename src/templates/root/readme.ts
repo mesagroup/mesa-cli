@@ -14,9 +14,8 @@ export function render(config: ScaffoldConfig): string {
 
 	if (projectType === 'standalone') {
 		lines.push(
-			`- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for SQL Server container)`,
-			`- [.NET SDK 10+](https://dotnet.microsoft.com/download) (for Aspire CLI)`,
-			`- Aspire CLI: \`dotnet tool install -g aspirate\``,
+			`- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for database container)`,
+			`- Aspire CLI 13.2+: \`curl -sSL https://aspire.dev/install.sh | bash\``,
 		);
 	} else if (projectType === 'saas') {
 		lines.push(
@@ -27,8 +26,7 @@ export function render(config: ScaffoldConfig): string {
 	} else {
 		lines.push(
 			`- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for SQL Server container)`,
-			`- [.NET SDK 10+](https://dotnet.microsoft.com/download) (for Aspire CLI)`,
-			`- Aspire CLI: \`dotnet tool install -g aspirate\``,
+			`- Aspire CLI 13.2+: \`curl -sSL https://aspire.dev/install.sh | bash\``,
 		);
 	}
 

@@ -5,6 +5,7 @@ export function render(config: ScaffoldConfig): string {
 		{
 			name: config.pluginName,
 			version: '1.0.0',
+			language: 'typescript',
 		},
 		null,
 		2,
