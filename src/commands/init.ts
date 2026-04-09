@@ -9,6 +9,7 @@ import { scaffold } from '../generators/scaffold';
 import type { ProjectType, DeployTarget, DatabaseType, FrontendType, MongoMode, ScaffoldConfig } from '../types/scaffold';
 
 export interface InitFlags {
+  type?: string;
   noFrontend?: boolean;
   author?: string;
   description?: string;
@@ -41,8 +42,15 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
   const useDefaults = flags.yes || !isInteractive();
 
   // 1. Project type selection
+  const validTypes: ProjectType[] = ['onprem', 'saas', 'standalone'];
   let projectType: ProjectType;
-  if (useDefaults) {
+  if (flags.type) {
+    if (!validTypes.includes(flags.type as ProjectType)) {
+      console.error(chalk.red(`Error: Invalid project type "${flags.type}". Must be one of: ${validTypes.join(', ')}`));
+      process.exit(1);
+    }
+    projectType = flags.type as ProjectType;
+  } else if (useDefaults) {
     projectType = 'onprem';
   } else {
     projectType = await select<ProjectType>({

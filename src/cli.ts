@@ -7,6 +7,11 @@ import { isFirstRun, markSetupDone } from './util/first-run';
 
 dotenv.config();
 
+// Support -v as shorthand for --version (meow handles --version automatically)
+if (process.argv.includes('-v')) {
+  process.argv[process.argv.indexOf('-v')] = '--version';
+}
+
 const cli = meow(
   `
   Usage
@@ -17,7 +22,11 @@ const cli = meow(
     setup    Check and install required development tools
     login    Login to your account and obtain an auth token
 
+  Options
+    -v, --version  Show version number
+
   Init Options
+    --type         Project type: onprem, saas, or standalone (default: onprem)
     --no-frontend  Skip Angular frontend generation
     --author       Author name (default: git config user.name)
     --description  Plugin description
@@ -36,6 +45,7 @@ const cli = meow(
   {
     importMeta: import.meta,
     flags: {
+      type: { type: 'string' },
       tenantId: { type: 'string' },
       frontend: { type: 'boolean', default: true },
       author: { type: 'string' },
@@ -65,6 +75,7 @@ async function main() {
       }
 
       await initCommand(args[0], {
+        type: cli.flags.type,
         noFrontend: !cli.flags.frontend,
         author: cli.flags.author,
         description: cli.flags.description,

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Build**: `pnpm build` (tsup, outputs to `dist/`)
 - **Dev (watch)**: `pnpm dev`
-- **Lint**: `pnpm lint` (xo + prettier)
+- **Lint**: `pnpm lint` (xo with default config — no `.xo-config` file; prettier handles formatting)
 - **Format**: `pnpm format`
 - **Test all**: `pnpm test` (vitest)
 - **Test single**: `pnpm test -- -t "test name"`
@@ -17,48 +17,57 @@ Package manager is **pnpm 10.9.0** (enforced via `packageManager` field).
 
 ## Architecture
 
-This is a CLI scaffolding tool (`mesa`) that generates MESAPPA plugin projects. The binary entry point is `dist/cli.js`, published as the `mesa` command.
+CLI scaffolding tool (`mesa`) that generates MESAPPA plugin projects. Published as the `mesa` npm command via `dist/cli.js`.
 
-### Source layout (`src/`)
+### Dual entry points
 
-- **`cli.ts`** — Entry point. Uses meow for CLI parsing, routes to commands (`init`, `setup`, `login`).
-- **`index.ts`** — Library entry re-exporting `client/` and `types/` for programmatic use.
-- **`commands/`** — Command handlers:
-  - `init.ts` — Interactive wizard (via `@inquirer/prompts`) collecting project config, then calls `scaffold()`.
-  - `setup.ts` — Environment checker (Docker, .NET, Node, gh CLI, etc.).
-- **`generators/scaffold.ts`** — Core scaffolding engine. Takes a `ScaffoldConfig`, writes the full project tree to disk. Imports all template renderers and conditionally emits files based on project type.
-- **`templates/`** — Template renderers organized by target:
-  - `backend/` — On-prem Express templates
-  - `backend-saas/` — Azure Functions templates
-  - `frontend/` — Angular 16 Module Federation templates
-  - `frontend-standalone/` — Next.js templates
-  - `frontend-vite/` — React + Vite templates
-  - `nextjs/` — Next.js full-stack app templates (API routes, db, auth)
-  - `aspire/` — .NET Aspire orchestrator config
-  - `db/` — Database-specific templates (sqlserver, postgresql, mongodb)
-  - `ci/` — GitHub Actions workflows
-  - `scripts/`, `scripts-saas/` — Platform start/deploy scripts
-  - `root/` — Shared root files (package.json, .gitignore, CLAUDE.md, README, env docs)
-- **`types/scaffold.ts`** — Core types: `ProjectType` (`onprem`|`saas`|`standalone`), `ScaffoldConfig`, `DeployTarget`, `DatabaseType`, `FrontendType`, `MongoMode`.
-- **`client/`** — MESA API client SDK (`ClientSDK`) with auth/login flow.
-- **`util/`** — Helpers: naming conventions, tool checker, first-run detection, name generator, URL resolver.
+tsup produces two bundles (see `tsup.config.ts`):
+- `dist/index.js` — Library entry (ESM + CJS, with `.d.ts`). Re-exports `ClientSDK` and types for programmatic use.
+- `dist/cli.js` — CLI binary (ESM only, minified, with `#!/usr/bin/env node` banner).
+
+### CLI commands
+
+- **`mesa init [name]`** — Interactive wizard (`@inquirer/prompts`) that collects project config, then calls `scaffold()`. Supports `--dry-run`, `--yes` (skip prompts), `--no-frontend`. On first run, auto-triggers `setup` before scaffolding.
+- **`mesa setup`** — Checks required dev tools (Git, Node, Docker, .NET SDK, Aspire CLI, gh). Persists completion marker to `~/.mesa-cli/setup-done`.
+- **`mesa login`** — Authenticates via `ClientSDK` against the MESA API (`{tenantId}.api.azurewebsites.net`).
+
+### Environment variables
+
+- `MESA_BASE_URL` — Override base API URL for login
+- `MESA_INSTANCE` — Default tenant ID when `--tenant-id` is not passed (falls back to `'default'`)
+- `MESA_GITHUB_ORG` — GitHub org for repo creation during `init` (defaults to `mesagroup`)
+
+### Source layout
+
+- **`cli.ts`** — Entry point. Uses meow for arg parsing, routes to commands.
+- **`commands/`** — `init.ts` (wizard + scaffold), `setup.ts` (tool checker loop + git identity + GitHub org access).
+- **`generators/scaffold.ts`** — Core scaffolding engine. Builds a `FileEntry[]` manifest per project type, creates directories, writes all files, then runs `git init` + initial commit.
+- **`templates/`** — Template renderers organized by target (backend, backend-saas, frontend, frontend-standalone, frontend-vite, nextjs, aspire, db, ci, scripts, scripts-saas, root).
+- **`types/scaffold.ts`** — Core types: `ProjectType`, `ScaffoldConfig`, `DeployTarget`, `DatabaseType`, `FrontendType`, `MongoMode`.
+- **`client/`** — `ClientSDK` with auth flow (password grant against Azure-hosted API).
+- **`util/`** — Naming helpers (`toKebabCase`/`toPascalCase`/`validatePluginName`), tool checker, first-run detection, random name generator, URL resolver.
 
 ### Template pattern
 
-Each template file exports a `render(config: ScaffoldConfig): string` function that returns the file content as a string. The scaffold engine calls these and writes the results to the output directory. When adding a new template:
+Each template file exports `render(config: ScaffoldConfig): string`. The scaffold engine calls these and writes results to disk. To add a new template:
 1. Create a `render` function in the appropriate `templates/` subdirectory
 2. Import it in `generators/scaffold.ts`
-3. Add the `writeFile` call in the correct project-type branch
+3. Add a `files.push(...)` call in the correct manifest builder (`buildOnPremManifest`, `buildSaasManifest`, or `buildStandaloneManifest`)
 
-### Build outputs
+### Scaffolding flow
 
-tsup produces two bundles (configured in `tsup.config.ts`):
-- `dist/index.js` — Library (ESM + CJS, with `.d.ts`)
-- `dist/cli.js` — CLI binary (ESM only, minified, with `#!/usr/bin/env node` banner)
+`scaffold()` works in three phases:
+1. **Manifest** — Calls `buildXxxManifest(config)` which returns a flat array of `{ relativePath, content }` entries. All file content is generated in memory before any I/O.
+2. **Write** — Creates directories (sorted parent-first), then writes all files.
+3. **Git init** — Runs `git init`, `git add .`, and creates initial commit. Optionally offers GitHub repo creation via `gh` CLI.
 
 ### Project types
 
-The CLI scaffolds three project types with different template combinations:
-- **`onprem`** — Express backend + Angular frontend + SQL Server + .NET Aspire
-- **`saas`** — Azure Functions backend + Angular frontend + Azure SQL + GitHub Actions CI
-- **`standalone`** — Configurable stack: database (sqlserver/postgresql/mongodb), frontend (nextjs/angular/react-vite), deploy target (vercel/azure)
+Three project types with different template combinations:
+- **`onprem`** — Express backend + Angular 16 (Module Federation) frontend + SQL Server + .NET Aspire orchestrator
+- **`saas`** — Azure Functions backend + Angular 16 frontend + Azure SQL + GitHub Actions CI
+- **`standalone`** — Configurable stack: database (sqlserver/postgresql/mongodb), frontend (nextjs/angular/react-vite), deploy target (vercel/azure). When frontend is `nextjs`, scaffolds a single Next.js app with API routes (no separate backend). Otherwise scaffolds a monorepo with Express backend.
+
+### Database templates (`templates/db/`)
+
+Each database module (sqlserver, postgresql, mongodb) exports `renderService(config)` instead of the standard `render()` — this is consumed by both the standalone Express backend and the Next.js full-stack path.
