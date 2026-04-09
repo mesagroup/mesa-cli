@@ -354,6 +354,27 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
     console.log(chalk.green('  ✓ ') + chalk.dim(file.relativePath));
   }
 
+  // Install root dependencies and Aspire integration
+  const usesAspire = config.projectType !== 'saas' && !(config.database === 'mongodb' && config.mongoMode === 'atlas');
+  if (usesAspire && process.env.MESA_SKIP_INSTALL !== '1') {
+    console.log(chalk.blue('\nInstalling dependencies...'));
+    try {
+      execSync('npm install', {cwd: outputDir, stdio: 'pipe'});
+      console.log(chalk.green('  ✓ ') + 'Dependencies installed');
+    } catch {
+      console.log(chalk.yellow('  ⚠ ') + 'npm install failed — run it manually after scaffolding');
+    }
+
+    const dbIntegration = config.database === 'postgresql' ? 'postgresql' : config.database === 'mongodb' ? 'mongodb' : 'sql-server';
+    console.log(chalk.blue(`\nAdding Aspire ${dbIntegration} integration...`));
+    try {
+      execSync(`aspire add ${dbIntegration} --non-interactive`, {cwd: outputDir, stdio: 'pipe'});
+      console.log(chalk.green('  ✓ ') + `Aspire ${dbIntegration} integration added`);
+    } catch {
+      console.log(chalk.yellow('  ⚠ ') + `aspire add ${dbIntegration} failed — run it manually: aspire add ${dbIntegration}`);
+    }
+  }
+
   // Initialize git
   console.log(chalk.blue('\nInitializing git repository...'));
   try {

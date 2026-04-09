@@ -1,10 +1,15 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 import { scaffold } from '../scaffold';
 import type { ScaffoldConfig } from '../../types/scaffold';
+
+// Skip npm install + aspire add during tests
+beforeAll(() => {
+  process.env.MESA_SKIP_INSTALL = '1';
+});
 
 function makeTmpDir(): string {
   const dir = join(tmpdir(), `mesa-test-${Date.now()}`);
@@ -137,7 +142,7 @@ describe('scaffold', () => {
 
     const apphost = readFileSync(join(config.outputDir, 'apphost.ts'), 'utf8');
     expect(apphost).toContain('addNodeApp');
-    expect(apphost).not.toContain('addNpmApp');
+    expect(apphost).not.toContain('addJavaScriptApp');
   });
 
   it('apphost.ts includes frontend when included', async () => {
@@ -148,7 +153,7 @@ describe('scaffold', () => {
 
     const apphost = readFileSync(join(config.outputDir, 'apphost.ts'), 'utf8');
     expect(apphost).toContain('addNodeApp');
-    expect(apphost).toContain('addNpmApp');
+    expect(apphost).toContain('addJavaScriptApp');
   });
 
   // --- Standalone project type tests ---

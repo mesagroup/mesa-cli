@@ -33,16 +33,23 @@ export function render(config: ScaffoldConfig): string {
 		scripts['install:all'] += ' && npm install --prefix frontend';
 	}
 
-	return JSON.stringify(
-		{
-			name: config.pluginName,
-			version: '0.1.0',
-			description: config.description,
-			author: config.author,
-			private: true,
-			scripts,
-		},
-		null,
-		2,
-	) + '\n';
+	const usesAspire = projectType !== 'saas';
+
+	const pkg: Record<string, unknown> = {
+		name: config.pluginName,
+		version: '0.1.0',
+		description: config.description,
+		author: config.author,
+		private: true,
+		type: 'module',
+		scripts,
+	};
+
+	if (usesAspire) {
+		pkg.dependencies = {
+			'vscode-jsonrpc': '^8.2.0',
+		};
+	}
+
+	return JSON.stringify(pkg, null, 2) + '\n';
 }

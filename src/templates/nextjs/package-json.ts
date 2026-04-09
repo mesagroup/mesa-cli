@@ -8,6 +8,7 @@ export function render(config: ScaffoldConfig): string {
 			description: config.description,
 			author: config.author,
 			private: true,
+			type: 'module',
 			scripts: {
 				dev: 'next dev',
 				build: 'next build',
@@ -20,6 +21,7 @@ export function render(config: ScaffoldConfig): string {
 				'react-dom': '^19.0.0',
 				dotenv: '^16.4.7',
 				jose: '^5.9.6',
+				'vscode-jsonrpc': '^8.2.0',
 				zod: '^3.24.2',
 			},
 			devDependencies: {

@@ -44,7 +44,7 @@ export function render(config: ScaffoldConfig): string {
 			``,
 			`// Next.js app`,
 			`const app = await builder`,
-			`  .addNpmApp('app', '.', 'dev')`,
+			`  .addJavaScriptApp('app', '.', { runScriptName: 'dev' })`,
 			`  .withReference(db)`,
 			`  .withHttpEndpoint({ port: 3000, env: 'PORT' });`,
 		);
@@ -71,27 +71,15 @@ export function render(config: ScaffoldConfig): string {
 					`  .withReference(api)`,
 					`  .waitFor(api);`,
 				);
-			} else if (isStandalone && config.frontend === 'angular') {
+			} else {
+				// Angular frontend (standalone or plugin types)
 				lines.push(
 					``,
 					`// Angular frontend`,
 					`await builder`,
-					`  .addNpmApp('web', './frontend', 'start')`,
+					`  .addJavaScriptApp('web', './frontend', { runScriptName: 'start' })`,
 					`  .withReference(api)`,
 					`  .withHttpEndpoint({ port: 4200, env: 'PORT' })`,
-					`  .waitFor(api);`,
-				);
-			} else {
-				// Plugin types (onprem/saas) — Angular
-				const frontendScript = 'start';
-				const frontendPort = 4200;
-				lines.push(
-					``,
-					`// Angular frontend`,
-					`await builder`,
-					`  .addNpmApp('web', './frontend', '${frontendScript}')`,
-					`  .withReference(api)`,
-					`  .withHttpEndpoint({ port: ${frontendPort}, env: 'PORT' })`,
 					`  .waitFor(api);`,
 				);
 			}
