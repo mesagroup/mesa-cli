@@ -4,11 +4,13 @@ import { confirm, input } from '@inquirer/prompts';
 import {
   checkAllTools,
   getInstallCommand,
-  getPlatformLabel,
+  getUpgradeCommand,
   getGitIdentity,
   checkGhOrgAccess,
+  getToolsForProjectType,
   type ToolStatus,
 } from '../util/tool-checker';
+import type { ProjectType } from '../types/scaffold';
 
 function printToolTable(results: ToolStatus[]): void {
   const nameWidth = Math.max(...results.map(r => r.tool.displayName.length)) + 2;
@@ -24,54 +26,90 @@ function printToolTable(results: ToolStatus[]): void {
   }
 }
 
-function printInstallInstructions(missing: ToolStatus[]): void {
-  const platform = getPlatformLabel();
-
-  console.log(chalk.yellow(`\n  Missing tools (${platform}):\n`));
-
-  for (const r of missing) {
-    const cmd = getInstallCommand(r.tool);
-    const label = r.tool.required ? '' : chalk.dim(' (optional)');
-    console.log(`  ${chalk.bold(r.tool.displayName)}${label}`);
-    console.log(`    ${chalk.cyan(cmd)}\n`);
+function runCommand(cmd: string): boolean {
+  try {
+    execSync(cmd, { stdio: 'inherit', timeout: 300_000 });
+    return true;
+  } catch {
+    return false;
   }
 }
 
-async function checkToolsLoop(): Promise<boolean> {
+async function checkToolsLoop(projectType: ProjectType): Promise<boolean> {
   let allGood = false;
+  const tools = getToolsForProjectType(projectType);
 
   while (!allGood) {
     console.log(chalk.dim('  Checking required tools...\n'));
 
-    const results = checkAllTools();
+    const results = checkAllTools(tools);
     printToolTable(results);
 
     const missing = results.filter(r => !r.installed);
+    const outdated = results.filter(r => r.installed && r.outdated);
+    const actionable = [...missing, ...outdated];
     const missingRequired = missing.filter(r => r.tool.required);
+    const outdatedRequired = outdated.filter(r => r.tool.required);
 
-    if (missing.length === 0) {
-      console.log(chalk.green.bold('\n  All tools are installed!\n'));
+    if (actionable.length === 0) {
+      console.log(chalk.green.bold('\n  All tools are installed and up to date!\n'));
       allGood = true;
       break;
     }
 
-    printInstallInstructions(missing);
-
-    if (missingRequired.length === 0) {
-      console.log(chalk.green('  All required tools are installed.'));
-      console.log(chalk.dim('  Optional tools can be installed later.\n'));
+    if (missingRequired.length === 0 && outdatedRequired.length === 0) {
+      console.log(chalk.green('\n  All required tools are installed and up to date.'));
+      console.log(chalk.dim('  Optional tools can be installed/upgraded later.\n'));
       allGood = true;
       break;
     }
 
-    const skip = await confirm({
-      message: 'Install the missing tools above, then press Enter to re-check. Skip?',
-      default: false,
-    });
+    console.log('');
+    let anyInstalled = false;
 
-    if (skip) {
-      console.log(chalk.yellow('\n  Skipping tool check. Some features may not work.\n'));
-      return false;
+    for (const r of actionable) {
+      const isMissing = !r.installed;
+      const action = isMissing ? 'Install' : 'Upgrade';
+      const cmd = isMissing ? getInstallCommand(r.tool) : getUpgradeCommand(r.tool);
+      const label = r.tool.required ? '' : chalk.dim(' (optional)');
+
+      const proceed = await confirm({
+        message: `${action} ${r.tool.displayName}${label}? ${chalk.dim(`→ ${cmd}`)}`,
+        default: r.tool.required,
+      });
+
+      if (proceed) {
+        console.log(chalk.blue(`\n  Running: ${cmd}\n`));
+        const ok = runCommand(cmd);
+        if (ok) {
+          console.log(
+            chalk.green(
+              `\n  ✓ ${r.tool.displayName} ${isMissing ? 'installed' : 'upgraded'} successfully\n`
+            )
+          );
+          anyInstalled = true;
+        } else {
+          console.log(
+            chalk.red(
+              `\n  ✗ ${r.tool.displayName} ${action.toLowerCase()} failed. You can try manually:\n`
+            )
+          );
+          console.log(chalk.cyan(`    ${cmd}\n`));
+        }
+      } else {
+        console.log('');
+      }
+    }
+
+    if (!anyInstalled) {
+      const skip = await confirm({
+        message: 'No changes were made. Skip tool check?',
+        default: false,
+      });
+      if (skip) {
+        console.log(chalk.yellow('\n  Skipping tool check. Some features may not work.\n'));
+        return false;
+      }
     }
 
     console.log('');
@@ -117,7 +155,9 @@ async function checkGitIdentity(): Promise<void> {
   if (updated.name && updated.email) {
     console.log(chalk.green('\n  ✓') + ` Git user: ${updated.name} <${updated.email}>\n`);
   } else {
-    console.log(chalk.yellow('\n  ⚠ Git identity still incomplete. You can configure it later.\n'));
+    console.log(
+      chalk.yellow('\n  ⚠ Git identity still incomplete. You can configure it later.\n')
+    );
   }
 }
 
@@ -160,7 +200,9 @@ async function checkGitHubAccess(): Promise<void> {
     // Re-check
     const updated = checkGhOrgAccess(org);
     if (!updated.authenticated) {
-      console.log(chalk.yellow('\n  ⚠ Still not authenticated. You can run `gh auth login` later.\n'));
+      console.log(
+        chalk.yellow('\n  ⚠ Still not authenticated. You can run `gh auth login` later.\n')
+      );
       return;
     }
 
@@ -172,16 +214,23 @@ async function checkGitHubAccess(): Promise<void> {
   await handleOrgAccess(status, org);
 }
 
-async function handleOrgAccess(status: { ghUser: string; hasOrgAccess: boolean }, org: string): Promise<void> {
+async function handleOrgAccess(
+  status: { ghUser: string; hasOrgAccess: boolean },
+  org: string
+): Promise<void> {
   if (status.hasOrgAccess) {
     console.log(chalk.green('  ✓') + ` Access to ${chalk.bold(org)} organization confirmed\n`);
     return;
   }
 
   console.log(chalk.red('  ✗') + ` No access to ${chalk.bold(org)} organization\n`);
-  console.log(chalk.yellow('  You need to be a member of the organization to create repositories.'));
+  console.log(
+    chalk.yellow('  You need to be a member of the organization to create repositories.')
+  );
   console.log(chalk.dim('  Options:\n'));
-  console.log(`    1. Ask your org admin to invite ${chalk.bold(status.ghUser)} to ${chalk.bold(org)}`);
+  console.log(
+    `    1. Ask your org admin to invite ${chalk.bold(status.ghUser)} to ${chalk.bold(org)}`
+  );
   console.log(`    2. Open: ${chalk.cyan(`https://github.com/orgs/${org}/people`)}`);
   console.log(`    3. Contact your team lead for access\n`);
 
@@ -201,11 +250,11 @@ async function handleOrgAccess(status: { ghUser: string; hasOrgAccess: boolean }
   }
 }
 
-export async function setupCommand(): Promise<boolean> {
+export async function setupCommand(projectType: ProjectType = 'onprem'): Promise<boolean> {
   console.log(chalk.blue.bold('\n  MESA Environment Setup\n'));
 
-  // Phase 1: Tool check
-  const toolsOk = await checkToolsLoop();
+  // Phase 1: Tool check (install missing + upgrade outdated)
+  const toolsOk = await checkToolsLoop(projectType);
 
   // Phase 2: Git identity
   await checkGitIdentity();

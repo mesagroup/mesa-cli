@@ -18,7 +18,8 @@ export class ClientSDK {
   }
 
   async request<T>(path: string, options: RequestInit = {}): Promise<T> {
-    const url = `${baseUrl(this.config.client.tenantId)}/${path}`;
+    const normalizedPath = path.replace(/^\/+/, '');
+    const url = `${baseUrl(this.config.client)}/${normalizedPath}`;
     const response = await fetch(url, {
       ...options,
       headers: {
