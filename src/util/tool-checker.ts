@@ -89,6 +89,35 @@ async function installGitHubCLIUserLevel(): Promise<boolean> {
   }
 }
 
+async function installAspireUserLevel(): Promise<boolean> {
+  try {
+    const installScript = isWindows
+      ? 'powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://aspire.dev/install.ps1 | iex"'
+      : 'curl -sSL https://aspire.dev/install.sh | bash';
+
+    execSync(installScript, { stdio: 'inherit', timeout: 300_000 });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installGitUserLevel(): Promise<boolean> {
+  try {
+    if (isWindows) {
+      execSync('winget install --id Git.Git', {
+        stdio: 'inherit',
+        timeout: 120_000,
+      });
+    } else {
+      execSync('brew install git', { stdio: 'inherit', timeout: 120_000 });
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const TOOLS: ToolInfo[] = [
   {
     name: 'git',
@@ -97,9 +126,10 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /git version ([\d.]+)/,
     installMac: 'brew install git',
     installWin: 'winget install --id Git.Git',
-    installWinUserLevel:
-      'Download Git portable from https://git-scm.com/download/win and extract to a folder in your user directory',
+    installWinUserLevel: 'winget install --id Git.Git',
     installMacUserLevel: 'brew install git',
+    autoInstallWin: installGitUserLevel,
+    autoInstallMac: installGitUserLevel,
     required: true,
   },
   {
@@ -169,6 +199,8 @@ export const TOOLS: ToolInfo[] = [
     installWin: 'irm https://aspire.dev/install.ps1 | iex',
     installWinUserLevel: 'irm https://aspire.dev/install.ps1 | iex',
     installMacUserLevel: 'curl -sSL https://aspire.dev/install.sh | bash',
+    autoInstallWin: installAspireUserLevel,
+    autoInstallMac: installAspireUserLevel,
     required: true,
   },
 ];
