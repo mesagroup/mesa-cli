@@ -35,7 +35,10 @@ import { render as renderAspireConfig } from '../templates/aspire/aspire-config'
 import { render as renderRootPackageJson } from '../templates/root/package-json';
 import { render as renderGitignore } from '../templates/root/gitignore';
 import { render as renderRootEnvExample } from '../templates/root/env-example';
-import { renderRoot as renderRootClaudeMd, renderProject as renderProjectClaudeMd } from '../templates/root/claude-md';
+import {
+  renderRoot as renderRootClaudeMd,
+  renderProject as renderProjectClaudeMd,
+} from '../templates/root/claude-md';
 import { render as renderReadme } from '../templates/root/readme';
 import { render as renderEnvVarsDoc } from '../templates/root/env-vars-doc';
 
@@ -135,8 +138,14 @@ function addFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
     relativePath: `frontend/projects/${pluginName}/src/public-api.ts`,
     content: renderPublicApi(config),
   });
-  files.push({ relativePath: 'frontend/src/app/app.module.ts', content: renderDevAppModule(config) });
-  files.push({ relativePath: 'frontend/src/app/app.component.ts', content: renderDevAppComponent(config) });
+  files.push({
+    relativePath: 'frontend/src/app/app.module.ts',
+    content: renderDevAppModule(config),
+  });
+  files.push({
+    relativePath: 'frontend/src/app/app.component.ts',
+    content: renderDevAppComponent(config),
+  });
 }
 
 function addRootFiles(files: FileEntry[], config: ScaffoldConfig): void {
@@ -200,11 +209,23 @@ function buildSaasManifest(config: ScaffoldConfig): FileEntry[] {
   files.push({ relativePath: 'backend/package.json', content: renderSaasPackageJson(config) });
   files.push({ relativePath: 'backend/tsconfig.json', content: renderSaasTsconfig(config) });
   files.push({ relativePath: 'backend/host.json', content: renderHostJson(config) });
-  files.push({ relativePath: 'backend/local.settings.json.example', content: renderLocalSettingsExample(config) });
-  files.push({ relativePath: 'backend/src/functions/health.ts', content: renderSaasHealthFunction(config) });
-  files.push({ relativePath: 'backend/src/functions/api.ts', content: renderSaasSampleFunction(config) });
+  files.push({
+    relativePath: 'backend/local.settings.json.example',
+    content: renderLocalSettingsExample(config),
+  });
+  files.push({
+    relativePath: 'backend/src/functions/health.ts',
+    content: renderSaasHealthFunction(config),
+  });
+  files.push({
+    relativePath: 'backend/src/functions/api.ts',
+    content: renderSaasSampleFunction(config),
+  });
   files.push({ relativePath: 'backend/src/config/env.ts', content: renderSaasEnvConfig(config) });
-  files.push({ relativePath: 'backend/src/middleware/authMiddleware.ts', content: renderSaasAuthMiddleware(config) });
+  files.push({
+    relativePath: 'backend/src/middleware/authMiddleware.ts',
+    content: renderSaasAuthMiddleware(config),
+  });
   files.push({ relativePath: 'backend/src/services/db.ts', content: renderSaasDbService(config) });
 
   // Frontend (conditional, shared with on-prem)
@@ -219,9 +240,12 @@ function buildSaasManifest(config: ScaffoldConfig): FileEntry[] {
 
 function getDbModule(config: ScaffoldConfig) {
   switch (config.database) {
-    case 'postgresql': return postgresqlDb;
-    case 'mongodb': return mongodbDb;
-    default: return sqlserverDb;
+    case 'postgresql':
+      return postgresqlDb;
+    case 'mongodb':
+      return mongodbDb;
+    default:
+      return sqlserverDb;
   }
 }
 
@@ -229,18 +253,30 @@ function addNextjsFeFrontendFiles(files: FileEntry[], config: ScaffoldConfig): v
   files.push({ relativePath: 'frontend/package.json', content: renderNextFePackageJson(config) });
   files.push({ relativePath: 'frontend/next.config.ts', content: renderNextFeConfig(config) });
   files.push({ relativePath: 'frontend/tsconfig.json', content: renderNextFeTsconfig(config) });
-  files.push({ relativePath: 'frontend/postcss.config.mts', content: renderNextFePostcssConfig(config) });
+  files.push({
+    relativePath: 'frontend/postcss.config.mts',
+    content: renderNextFePostcssConfig(config),
+  });
   files.push({ relativePath: 'frontend/src/app/layout.tsx', content: renderNextFeLayout(config) });
   files.push({ relativePath: 'frontend/src/app/page.tsx', content: renderNextFePage(config) });
-  files.push({ relativePath: 'frontend/src/app/globals.css', content: renderNextFeGlobalsCss(config) });
+  files.push({
+    relativePath: 'frontend/src/app/globals.css',
+    content: renderNextFeGlobalsCss(config),
+  });
 }
 
 function addViteFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: 'frontend/package.json', content: renderVitePackageJson(config) });
   files.push({ relativePath: 'frontend/vite.config.ts', content: renderViteConfig(config) });
   files.push({ relativePath: 'frontend/tsconfig.json', content: renderViteTsconfig(config) });
-  files.push({ relativePath: 'frontend/postcss.config.js', content: renderVitePostcssConfig(config) });
-  files.push({ relativePath: 'frontend/tailwind.config.js', content: renderViteTailwindConfig(config) });
+  files.push({
+    relativePath: 'frontend/postcss.config.js',
+    content: renderVitePostcssConfig(config),
+  });
+  files.push({
+    relativePath: 'frontend/tailwind.config.js',
+    content: renderViteTailwindConfig(config),
+  });
   files.push({ relativePath: 'frontend/index.html', content: renderViteIndexHtml(config) });
   files.push({ relativePath: 'frontend/src/App.tsx', content: renderViteAppTsx(config) });
   files.push({ relativePath: 'frontend/src/main.tsx', content: renderViteMainTsx(config) });
@@ -267,7 +303,10 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
   const needsAspire = !(config.database === 'mongodb' && config.mongoMode === 'atlas');
 
   // CI/CD
-  files.push({ relativePath: '.github/workflows/ci.yml', content: renderGitHubActionsStandalone(config) });
+  files.push({
+    relativePath: '.github/workflows/ci.yml',
+    content: renderGitHubActionsStandalone(config),
+  });
 
   // Aspire (for local DB orchestration)
   if (needsAspire) {
@@ -295,9 +334,15 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
     files.push({ relativePath: 'src/app/layout.tsx', content: renderNextjsLayout(config) });
     files.push({ relativePath: 'src/app/page.tsx', content: renderNextjsPage(config) });
     files.push({ relativePath: 'src/app/globals.css', content: renderNextjsGlobalsCss(config) });
-    files.push({ relativePath: 'src/app/api/health/route.ts', content: renderNextjsApiHealth(config) });
+    files.push({
+      relativePath: 'src/app/api/health/route.ts',
+      content: renderNextjsApiHealth(config),
+    });
     files.push({ relativePath: 'src/lib/env.ts', content: renderNextjsEnvConfig(config) });
-    files.push({ relativePath: 'src/lib/db.ts', content: getDbModule(config).renderService(config) });
+    files.push({
+      relativePath: 'src/lib/db.ts',
+      content: getDbModule(config).renderService(config),
+    });
   } else {
     // Monorepo: root files + Express backend + chosen frontend
     addRootFiles(files, config);
@@ -355,23 +400,33 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
   }
 
   // Install root dependencies and Aspire integration
-  const usesAspire = config.projectType !== 'saas' && !(config.database === 'mongodb' && config.mongoMode === 'atlas');
+  const usesAspire =
+    config.projectType !== 'saas' &&
+    !(config.database === 'mongodb' && config.mongoMode === 'atlas');
   if (usesAspire && process.env.MESA_SKIP_INSTALL !== '1') {
     console.log(chalk.blue('\nInstalling dependencies...'));
     try {
-      execSync('npm install', {cwd: outputDir, stdio: 'pipe'});
+      execSync('npm install', { cwd: outputDir, stdio: 'pipe' });
       console.log(chalk.green('  ✓ ') + 'Dependencies installed');
     } catch {
       console.log(chalk.yellow('  ⚠ ') + 'npm install failed — run it manually after scaffolding');
     }
 
-    const dbIntegration = config.database === 'postgresql' ? 'postgresql' : config.database === 'mongodb' ? 'mongodb' : 'sql-server';
+    const dbIntegration =
+      config.database === 'postgresql'
+        ? 'postgresql'
+        : config.database === 'mongodb'
+          ? 'mongodb'
+          : 'sql-server';
     console.log(chalk.blue(`\nAdding Aspire ${dbIntegration} integration...`));
     try {
-      execSync(`aspire add ${dbIntegration} --non-interactive`, {cwd: outputDir, stdio: 'pipe'});
+      execSync(`aspire add ${dbIntegration} --non-interactive`, { cwd: outputDir, stdio: 'pipe' });
       console.log(chalk.green('  ✓ ') + `Aspire ${dbIntegration} integration added`);
     } catch {
-      console.log(chalk.yellow('  ⚠ ') + `aspire add ${dbIntegration} failed — run it manually: aspire add ${dbIntegration}`);
+      console.log(
+        chalk.yellow('  ⚠ ') +
+          `aspire add ${dbIntegration} failed — run it manually: aspire add ${dbIntegration}`
+      );
     }
   }
 
@@ -383,7 +438,11 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
     execSync('git commit -m "✨ Initial scaffold via mesa-cli"', {
       cwd: outputDir,
       stdio: 'pipe',
-      env: { ...process.env, GIT_AUTHOR_NAME: config.author || 'mesa-cli', GIT_COMMITTER_NAME: config.author || 'mesa-cli' },
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: config.author || 'mesa-cli',
+        GIT_COMMITTER_NAME: config.author || 'mesa-cli',
+      },
     });
     console.log(chalk.green('  ✓ ') + 'Git repository initialized with initial commit');
   } catch {
@@ -391,7 +450,15 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
   }
 
   // Summary
-  const typeLabels: Record<string, string> = { standalone: 'standalone', saas: 'SaaS', onprem: 'on-prem' };
+  const typeLabels: Record<string, string> = {
+    standalone: 'standalone',
+    saas: 'SaaS',
+    onprem: 'on-prem',
+  };
   const typeLabel = typeLabels[config.projectType] ?? config.projectType;
-  console.log(chalk.green(`\n✓ Project ${chalk.bold(pluginName)} (${typeLabel}) created with ${files.length} files\n`));
+  console.log(
+    chalk.green(
+      `\n✓ Project ${chalk.bold(pluginName)} (${typeLabel}) created with ${files.length} files\n`
+    )
+  );
 }

@@ -1,7 +1,7 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	return `interface HealthStatus {
+  return `interface HealthStatus {
   status: string;
   db: string;
 }

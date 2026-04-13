@@ -1,7 +1,7 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function renderService(_config: ScaffoldConfig): string {
-	return `import { Pool } from 'pg';
+  return `import { Pool } from 'pg';
 import { env } from '../config/env';
 
 let pool: Pool | null = null;
@@ -25,7 +25,7 @@ export function getPool(): Pool {
 }
 
 export function renderEnvSchema(_config: ScaffoldConfig): string {
-	return `  DATABASE_URL: z.string().optional(),
+  return `  DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default('localhost'),
   DB_PORT: z.coerce.number().default(5432),
   DB_NAME: z.string().min(1),
@@ -36,7 +36,7 @@ export function renderEnvSchema(_config: ScaffoldConfig): string {
 }
 
 export function renderEnvExample(_config: ScaffoldConfig): string {
-	return `# Database (PostgreSQL)
+  return `# Database (PostgreSQL)
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=appdb
@@ -47,18 +47,18 @@ DB_SSL=false
 }
 
 export function renderHealthCheck(_config: ScaffoldConfig): string {
-	return `    const pool = getPool();
+  return `    const pool = getPool();
     await pool.query('SELECT 1');`;
 }
 
 export function getHealthCheckImport(): string {
-	return `import { getPool } from '../services/db';`;
+  return `import { getPool } from '../services/db';`;
 }
 
 export function getDependencies(): Record<string, string> {
-	return {pg: '^8.13.0'};
+  return { pg: '^8.13.0' };
 }
 
 export function getDevDependencies(): Record<string, string> {
-	return {'@types/pg': '^8.11.0'};
+  return { '@types/pg': '^8.11.0' };
 }

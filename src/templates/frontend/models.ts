@@ -1,7 +1,7 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `export interface Configuration {
+  return `export interface Configuration {
   baseApiUrl: string;
 }
 

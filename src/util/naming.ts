@@ -41,7 +41,10 @@ export function validatePluginName(name: string): { valid: boolean; error?: stri
   }
 
   if (name.startsWith('-') || name.endsWith('-') || name.includes('--')) {
-    return { valid: false, error: 'Plugin name must not start/end with a hyphen or have consecutive hyphens' };
+    return {
+      valid: false,
+      error: 'Plugin name must not start/end with a hyphen or have consecutive hyphens',
+    };
   }
 
   return { valid: true };

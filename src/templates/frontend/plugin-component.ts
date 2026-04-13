@@ -1,9 +1,9 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	const {pluginName, pluginClassName} = config;
+  const { pluginName, pluginClassName } = config;
 
-	return `import { Component } from '@angular/core';
+  return `import { Component } from '@angular/core';
 
 @Component({
   selector: 'app-${pluginName}',

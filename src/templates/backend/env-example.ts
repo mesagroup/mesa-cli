@@ -1,7 +1,7 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `# Server
+  return `# Server
 PORT=3000
 CORS_ORIGINS=http://localhost:4200
 

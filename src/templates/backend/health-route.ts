@@ -1,7 +1,7 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `import { Router, type Request, type Response } from 'express';
+  return `import { Router, type Request, type Response } from 'express';
 import { getPool } from '../services/db';
 
 const router = Router();

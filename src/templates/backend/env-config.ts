@@ -1,7 +1,7 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `import dotenv from 'dotenv';
+  return `import dotenv from 'dotenv';
 import { z } from 'zod';
 
 dotenv.config();

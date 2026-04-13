@@ -1,7 +1,7 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `import { type Request, type Response, type NextFunction } from 'express';
+  return `import { type Request, type Response, type NextFunction } from 'express';
 import { jwtVerify, importSPKI, type JWTPayload } from 'jose';
 import { env } from '../config/env';
 
