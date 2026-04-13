@@ -14,13 +14,25 @@ function printToolTable(results: ToolStatus[]): void {
   const nameWidth = Math.max(...results.map(r => r.tool.displayName.length)) + 2;
 
   for (const r of results) {
-    const icon = r.installed ? chalk.green('  ✓') : chalk.red('  ✗');
-    const name = r.tool.displayName.padEnd(nameWidth);
-    const version = r.installed
-      ? chalk.dim(`v${r.version}`)
-      : chalk.red('not found') + (r.tool.required ? '' : chalk.dim(' (optional)'));
+    let icon: string;
+    let versionText: string;
 
-    console.log(`${icon} ${name} ${version}`);
+    if (!r.installed) {
+      icon = chalk.red('  ✗');
+      versionText = chalk.red('not found') + (r.tool.required ? '' : chalk.dim(' (optional)'));
+    } else if (r.outdated) {
+      icon = chalk.yellow('  ⚠');
+      const upgradeHint = r.tool.minVersion 
+        ? chalk.yellow(` (requires >= ${r.tool.minVersion} — update needed)`)
+        : '';
+      versionText = chalk.dim(`v${r.version}`) + upgradeHint;
+    } else {
+      icon = chalk.green('  ✓');
+      versionText = chalk.dim(`v${r.version}`);
+    }
+
+    const name = r.tool.displayName.padEnd(nameWidth);
+    console.log(`${icon} ${name} ${versionText}`);
   }
 }
 
@@ -37,6 +49,21 @@ function printInstallInstructions(missing: ToolStatus[]): void {
   }
 }
 
+function printUpgradeInstructions(outdated: ToolStatus[]): void {
+  const platform = getPlatformLabel();
+
+  console.log(chalk.yellow(`\n  Outdated tools (${platform}):\n`));
+
+  for (const r of outdated) {
+    const cmd = getInstallCommand(r.tool);
+    const label = r.tool.required ? '' : chalk.dim(' (optional)');
+    const minVer = r.tool.minVersion ?? 'latest';
+    console.log(`  ${chalk.bold(r.tool.displayName)}${label}`);
+    console.log(`    Current: ${chalk.red(`v${r.version}`)} → Required: ${chalk.green(`>= ${minVer}`)}`);
+    console.log(`    ${chalk.cyan(cmd)}\n`);
+  }
+}
+
 async function checkToolsLoop(): Promise<boolean> {
   let allGood = false;
 
@@ -48,24 +75,35 @@ async function checkToolsLoop(): Promise<boolean> {
 
     const missing = results.filter(r => !r.installed);
     const missingRequired = missing.filter(r => r.tool.required);
+    const outdated = results.filter(r => r.installed && r.outdated);
+    const outdatedRequired = outdated.filter(r => r.tool.required);
 
-    if (missing.length === 0) {
-      console.log(chalk.green.bold('\n  All tools are installed!\n'));
+    const hasIssues = missing.length > 0 || outdated.length > 0;
+    const hasRequiredIssues = missingRequired.length > 0 || outdatedRequired.length > 0;
+
+    if (!hasIssues) {
+      console.log(chalk.green.bold('\n  All tools are installed and up to date!\n'));
       allGood = true;
       break;
     }
 
-    printInstallInstructions(missing);
+    if (missing.length > 0) {
+      printInstallInstructions(missing);
+    }
 
-    if (missingRequired.length === 0) {
-      console.log(chalk.green('  All required tools are installed.'));
-      console.log(chalk.dim('  Optional tools can be installed later.\n'));
+    if (outdated.length > 0) {
+      printUpgradeInstructions(outdated);
+    }
+
+    if (!hasRequiredIssues) {
+      console.log(chalk.green('  All required tools are installed and up to date.'));
+      console.log(chalk.dim('  Optional tools can be installed/updated later.\n'));
       allGood = true;
       break;
     }
 
     const skip = await confirm({
-      message: 'Install the missing tools above, then press Enter to re-check. Skip?',
+      message: 'Install/update the tools above, then press Enter to re-check. Skip?',
       default: false,
     });
 

@@ -6,6 +6,7 @@ export interface ToolInfo {
   displayName: string;
   checkCommand: string;
   versionPattern?: RegExp;
+  minVersion?: string;
   installMac: string;
   installWin: string;
   required: boolean;
@@ -15,6 +16,32 @@ export interface ToolStatus {
   tool: ToolInfo;
   installed: boolean;
   version: string;
+  outdated: boolean;
+}
+
+/**
+ * Compares two semver-like version strings (major.minor.patch).
+ * Returns: -1 if a < b, 0 if a == b, 1 if a > b
+ */
+export function compareVersions(a: string, b: string): number {
+  const partsA = a.split('.').map(n => Number.parseInt(n, 10) || 0);
+  const partsB = b.split('.').map(n => Number.parseInt(n, 10) || 0);
+  
+  const maxLen = Math.max(partsA.length, partsB.length);
+  for (let i = 0; i < maxLen; i++) {
+    const numA = partsA[i] ?? 0;
+    const numB = partsB[i] ?? 0;
+    if (numA < numB) return -1;
+    if (numA > numB) return 1;
+  }
+  return 0;
+}
+
+/**
+ * Checks if a version meets the minimum required version.
+ */
+export function meetsMinVersion(version: string, minVersion: string): boolean {
+  return compareVersions(version, minVersion) >= 0;
 }
 
 const isWindows = process.platform === 'win32';
@@ -25,6 +52,7 @@ export const TOOLS: ToolInfo[] = [
     displayName: 'Git',
     checkCommand: 'git --version',
     versionPattern: /git version ([\d.]+)/,
+    minVersion: '2.30',
     installMac: 'brew install git',
     installWin: 'winget install --id Git.Git',
     required: true,
@@ -34,6 +62,7 @@ export const TOOLS: ToolInfo[] = [
     displayName: 'Node.js',
     checkCommand: 'node --version',
     versionPattern: /v([\d.]+)/,
+    minVersion: '18.0',
     installMac: 'brew install node',
     installWin: 'winget install --id OpenJS.NodeJS.LTS',
     required: true,
@@ -52,6 +81,7 @@ export const TOOLS: ToolInfo[] = [
     displayName: 'Docker',
     checkCommand: 'docker --version',
     versionPattern: /Docker version ([\d.]+)/,
+    minVersion: '20.0',
     installMac: 'brew install --cask docker',
     installWin: 'winget install --id Docker.DockerDesktop',
     required: true,
@@ -61,6 +91,7 @@ export const TOOLS: ToolInfo[] = [
     displayName: '.NET SDK',
     checkCommand: 'dotnet --version',
     versionPattern: /([\d.]+)/,
+    minVersion: '10.0',
     installMac: 'brew install dotnet',
     installWin: 'winget install --id Microsoft.DotNet.SDK.10',
     required: false,
@@ -70,6 +101,7 @@ export const TOOLS: ToolInfo[] = [
     displayName: 'Aspire CLI',
     checkCommand: 'aspire --version',
     versionPattern: /([\d.]+)/,
+    minVersion: '13.0',
     installMac: 'curl -sSL https://aspire.dev/install.sh | bash',
     installWin: 'irm https://aspire.dev/install.ps1 | iex',
     required: true,
@@ -92,9 +124,13 @@ export function checkTool(tool: ToolInfo): ToolStatus {
       }
     }
 
-    return { tool, installed: true, version };
+    const outdated = tool.minVersion !== undefined 
+      && version !== 'installed' 
+      && !meetsMinVersion(version, tool.minVersion);
+
+    return { tool, installed: true, version, outdated };
   } catch {
-    return { tool, installed: false, version: '' };
+    return { tool, installed: false, version: '', outdated: false };
   }
 }
 
