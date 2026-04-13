@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { input, confirm, select } from '@inquirer/prompts';
 import chalk from 'chalk';
-import { toKebabCase, toPascalCase, validatePluginName } from '../util/naming';
+import { toKebabCase, toPascalCase, validatePluginName, validateGitHubName } from '../util/naming';
 import { generateFancyName } from '../util/name-generator';
 import { scaffold } from '../generators/scaffold';
 import type { ProjectType, DeployTarget, DatabaseType, FrontendType, MongoMode, ScaffoldConfig } from '../types/scaffold';
@@ -243,17 +243,27 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
       const org = await input({
         message: 'GitHub organization:',
         default: defaultOrg,
+        validate(value) {
+          const result = validateGitHubName(value);
+          return result.valid || result.error!;
+        },
       });
 
-      try {
-        console.log(chalk.blue('\nCreating GitHub repository...'));
-        execSync(`gh repo create ${org}/${pluginName} --private --source . --push`, {
-          cwd: outputDir,
-          stdio: 'inherit',
-        });
-        console.log(chalk.green('  ✓ ') + `Repository created: ${org}/${pluginName}`);
-      } catch {
-        console.log(chalk.yellow('  ⚠ ') + 'GitHub repository creation failed. You can create it manually later.');
+      const orgValidation = validateGitHubName(org);
+      if (!orgValidation.valid) {
+        console.log(chalk.yellow('  ⚠ ') + `Invalid organization name: ${orgValidation.error}`);
+      } else {
+        try {
+          console.log(chalk.blue('\nCreating GitHub repository...'));
+          execSync(`gh repo create ${org}/${pluginName} --private --source . --push`, {
+            cwd: outputDir,
+            stdio: 'inherit',
+            timeout: 120_000,
+          });
+          console.log(chalk.green('  ✓ ') + `Repository created: ${org}/${pluginName}`);
+        } catch {
+          console.log(chalk.yellow('  ⚠ ') + 'GitHub repository creation failed. You can create it manually later.');
+        }
       }
     }
   } else if (!isInteractive()) {

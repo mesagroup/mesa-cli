@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import chalk from 'chalk';
 import { confirm, input } from '@inquirer/prompts';
+import open from 'open';
 import {
   checkAllTools,
   getInstallCommand,
@@ -9,6 +10,7 @@ import {
   checkGhOrgAccess,
   type ToolStatus,
 } from '../util/tool-checker';
+import { validateGitHubName } from '../util/naming';
 
 function printToolTable(results: ToolStatus[]): void {
   const nameWidth = Math.max(...results.map(r => r.tool.displayName.length)) + 2;
@@ -175,7 +177,17 @@ async function checkGitHubAccess(): Promise<void> {
   const org = await input({
     message: 'GitHub organization to verify access:',
     default: defaultOrg,
+    validate(value) {
+      const result = validateGitHubName(value);
+      return result.valid || result.error!;
+    },
   });
+
+  const orgValidation = validateGitHubName(org);
+  if (!orgValidation.valid) {
+    console.log(chalk.yellow(`\n  ⚠ Invalid organization name: ${orgValidation.error}\n`));
+    return;
+  }
 
   const status = checkGhOrgAccess(org);
 
@@ -230,8 +242,7 @@ async function handleOrgAccess(status: { ghUser: string; hasOrgAccess: boolean }
 
   if (openPage) {
     try {
-      const openCmd = process.platform === 'win32' ? 'start' : 'open';
-      execSync(`${openCmd} https://github.com/orgs/${org}/people`, { stdio: 'ignore' });
+      await open(`https://github.com/orgs/${encodeURIComponent(org)}/people`);
       console.log(chalk.dim('  Opened in browser.\n'));
     } catch {
       console.log(chalk.dim(`  Visit: https://github.com/orgs/${org}/people\n`));

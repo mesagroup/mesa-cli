@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import type { ProjectType } from '../types/scaffold';
+import { validateGitHubName } from './naming';
 
 export interface ToolInfo {
   name: string;
@@ -210,6 +211,12 @@ export interface GhOrgStatus {
 export function checkGhOrgAccess(org: string): GhOrgStatus {
   const result: GhOrgStatus = { authenticated: false, ghUser: '', hasOrgAccess: false };
 
+  // Validate org name to prevent command injection
+  const orgValidation = validateGitHubName(org);
+  if (!orgValidation.valid) {
+    return result;
+  }
+
   // Check if gh is authenticated
   try {
     const status = execSync('gh auth status 2>&1', {
@@ -253,6 +260,12 @@ export function checkGhOrgAccess(org: string): GhOrgStatus {
 }
 
 export function requestGhOrgAccess(org: string): boolean {
+  // Validate org name to prevent command injection
+  const orgValidation = validateGitHubName(org);
+  if (!orgValidation.valid) {
+    return false;
+  }
+
   try {
     // gh api to request org membership (sends a membership request)
     execSync(`gh api -X POST orgs/${org}/memberships/{username} 2>&1`, {

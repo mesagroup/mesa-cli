@@ -46,3 +46,35 @@ export function validatePluginName(name: string): { valid: boolean; error?: stri
 
   return { valid: true };
 }
+
+/**
+ * Validate a GitHub organization or repository name.
+ * GitHub allows: alphanumeric, hyphens, cannot start with hyphen.
+ * Max 39 characters for org names.
+ */
+export function validateGitHubName(name: string): { valid: boolean; error?: string } {
+  if (!name || name.length === 0) {
+    return { valid: false, error: 'Name cannot be empty' };
+  }
+
+  if (name.length > 100) {
+    return { valid: false, error: 'Name too long (max 100 characters)' };
+  }
+
+  if (!/^[a-zA-Z0-9][\w.-]*$/.test(name)) {
+    return {
+      valid: false,
+      error: 'Name must start with alphanumeric and contain only letters, digits, hyphens, underscores, or dots',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Check if a string is safe for shell interpolation.
+ * Returns true only for safe alphanumeric strings with limited special chars.
+ */
+export function isShellSafe(input: string): boolean {
+  return /^[a-zA-Z0-9_.\-/]+$/.test(input);
+}
