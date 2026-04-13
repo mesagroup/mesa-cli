@@ -9,9 +9,11 @@
     "mesa": "dist/cli.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts"
   ],
   "scripts": {
+    "postinstall": "node scripts/postinstall.js",
     "build": "tsup",
     "dev": "tsup --watch",
     "lint": "xo",

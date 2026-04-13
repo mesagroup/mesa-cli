@@ -39,6 +39,11 @@ import { renderRoot as renderRootClaudeMd, renderProject as renderProjectClaudeM
 import { render as renderReadme } from '../templates/root/readme';
 import { render as renderEnvVarsDoc } from '../templates/root/env-vars-doc';
 
+// Cursor rules templates (AI agent personas for generated projects)
+import { render as renderCursorDeveloper } from '../templates/cursor-rules/agent-developer';
+import { render as renderCursorReviewer } from '../templates/cursor-rules/agent-reviewer';
+import { render as renderCursorTester } from '../templates/cursor-rules/agent-tester';
+
 // Script templates (on-prem)
 import { render as renderStartLocalPs1 } from '../templates/scripts/start-local-ps1';
 import { render as renderStartLocalSh } from '../templates/scripts/start-local-sh';
@@ -139,6 +144,12 @@ function addFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: 'frontend/src/app/app.component.ts', content: renderDevAppComponent(config) });
 }
 
+function addCursorRules(files: FileEntry[], config: ScaffoldConfig): void {
+  files.push({ relativePath: '.cursor/rules/agent-developer.mdc', content: renderCursorDeveloper(config) });
+  files.push({ relativePath: '.cursor/rules/agent-reviewer.mdc', content: renderCursorReviewer(config) });
+  files.push({ relativePath: '.cursor/rules/agent-tester.mdc', content: renderCursorTester(config) });
+}
+
 function addRootFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: 'package.json', content: renderRootPackageJson(config) });
   files.push({ relativePath: '.gitignore', content: renderGitignore(config) });
@@ -147,6 +158,7 @@ function addRootFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: '.claude/CLAUDE.md', content: renderProjectClaudeMd(config) });
   files.push({ relativePath: 'docs/README.md', content: renderReadme(config) });
   files.push({ relativePath: 'docs/env-vars.md', content: renderEnvVarsDoc(config) });
+  addCursorRules(files, config);
 }
 
 function buildOnPremManifest(config: ScaffoldConfig): FileEntry[] {
@@ -286,6 +298,7 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
     files.push({ relativePath: '.claude/CLAUDE.md', content: renderProjectClaudeMd(config) });
     files.push({ relativePath: 'docs/README.md', content: renderReadme(config) });
     files.push({ relativePath: 'docs/env-vars.md', content: renderEnvVarsDoc(config) });
+    addCursorRules(files, config);
 
     // Next.js full-stack — API routes handle backend, no Express
     files.push({ relativePath: 'package.json', content: renderNextjsPackageJson(config) });

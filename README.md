@@ -202,6 +202,36 @@ Every generated project embeds these constraints in CLAUDE.md, so both humans an
 - **V8**: `.env` in `.gitignore`, only `.env.example` committed
 - **V10**: CORS with explicit origin whitelist
 
+## Troubleshooting
+
+### `mesa` is not recognized (command not found)
+
+After `npm install -g @mesagroup/mesa-cli`, the install can succeed but the shell still cannot find `mesa`. This usually means the **npm global bin directory** is not on your `PATH` (common on Windows when `%APPDATA%\npm` was never added).
+
+**Check:** run `npm prefix -g`. On Windows, that folder is where global CLI binaries live; on macOS/Linux, binaries are in `<prefix>/bin`. That directory must appear in your `PATH`.
+
+**Windows (PowerShell)** — append the global prefix for your user and restart the terminal:
+
+```powershell
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";$(npm prefix -g)", "User")
+```
+
+**Windows (Command Prompt)** — `setx` has PATH length limits; prefer PowerShell above. If you use `setx`:
+
+```bat
+setx PATH "%PATH%;%APPDATA%\npm"
+```
+
+Adjust the path if `npm prefix -g` prints a different folder.
+
+**macOS / Linux** — add the global `bin` directory to your shell profile (e.g. `~/.zshrc` or `~/.bashrc`), then restart the terminal:
+
+```bash
+export PATH="$(npm prefix -g)/bin:$PATH"
+```
+
+A **postinstall** script in this package prints a warning when it detects this situation; fixing `PATH` and opening a new terminal resolves it.
+
 ## Contributing
 
 ```bash

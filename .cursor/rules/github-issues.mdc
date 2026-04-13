@@ -1,0 +1,88 @@
+---
+description: How to create GitHub issues via gh CLI — context gathering, auth check, structured body, Windows-safe commands
+alwaysApply: true
+---
+
+# Creating GitHub Issues
+
+When the user asks to open a GitHub issue, follow this workflow strictly.
+
+## 1. Gather Context First
+
+Before creating anything, make sure you understand the problem:
+
+- **What happened?** Reproduce the exact error, command, or behavior.
+- **What was expected?** Clarify what should have happened instead.
+- **What environment?** OS, tool versions, terminal type.
+- **Is this a bug, feature request, or improvement?**
+
+If any of the above is unclear, **ask the user before proceeding**. Do not guess or assume — a vague issue wastes everyone's time.
+
+Use conversation history as context: if the user has been debugging a problem with you, extract the relevant details from the conversation instead of asking again.
+
+## 2. Check gh Authentication
+
+Before attempting to create the issue, verify auth:
+
+```
+gh auth status
+```
+
+If not authenticated:
+1. Run `gh auth login --web --git-protocol https`
+2. Give the user the one-time code and the URL to open in browser
+3. Wait for confirmation before proceeding
+
+## 3. Write the Issue Body to a Temp File
+
+PowerShell does not support heredoc (`<<EOF`). Always write the issue body to a temporary file, use it with `--body-file`, then delete it.
+
+```
+# Write body to temp file
+Write "issue-body.md" with the content
+
+# Create issue
+gh issue create --repo <owner>/<repo> --title "<title>" --body-file issue-body.md
+
+# Clean up
+Delete "issue-body.md"
+```
+
+Never try to pass multiline body content inline on Windows.
+
+## 4. Issue Structure
+
+### Title
+Concise, action-oriented. Start with the area of impact.
+- Good: `Post-install: add PATH diagnostic when mesa command is not found`
+- Bad: `Bug with install`
+
+### Body Format
+
+```markdown
+## Problem
+What is broken or missing. Include exact error messages, screenshots, or logs from the conversation.
+
+## Expected behavior
+What should happen instead.
+
+## Steps to reproduce
+1. Numbered steps to trigger the problem
+2. Include exact commands run
+
+## Proposed solution
+Concrete options (A/B/C) with trade-offs when relevant. If only one approach makes sense, describe it directly.
+
+## Environment
+- OS and version
+- Tool versions (node, npm, etc.)
+- Terminal type
+```
+
+Adapt sections to the issue type — feature requests may skip "Steps to reproduce", improvements may skip "Environment".
+
+## 5. After Creation
+
+- Print the issue URL so the user can review it
+- Delete the temporary `issue-body.md` file
+- Ask if they want to assign it, add labels, or link it to a milestone
