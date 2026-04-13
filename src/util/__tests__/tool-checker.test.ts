@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compareVersions, meetsMinVersion } from '../tool-checker';
+import { compareVersions, meetsMinVersion, getToolsForProjectType, TOOLS } from '../tool-checker';
 
 describe('compareVersions', () => {
   it('returns 0 for equal versions', () => {
@@ -62,5 +62,45 @@ describe('meetsMinVersion', () => {
 
     expect(meetsMinVersion('13.0.1', '13.0')).toBe(true);
     expect(meetsMinVersion('12.9.0', '13.0')).toBe(false);
+  });
+});
+
+describe('getToolsForProjectType', () => {
+  it('returns .NET SDK with minVersion 10.0 for onprem projects', () => {
+    const tools = getToolsForProjectType('onprem');
+    const dotnet = tools.find(t => t.name === 'dotnet');
+    expect(dotnet?.minVersion).toBe('10.0');
+  });
+
+  it('returns .NET SDK with minVersion 10.0 for standalone projects', () => {
+    const tools = getToolsForProjectType('standalone');
+    const dotnet = tools.find(t => t.name === 'dotnet');
+    expect(dotnet?.minVersion).toBe('10.0');
+  });
+
+  it('returns .NET SDK with minVersion 8.0 for saas projects', () => {
+    const tools = getToolsForProjectType('saas');
+    const dotnet = tools.find(t => t.name === 'dotnet');
+    expect(dotnet?.minVersion).toBe('8.0');
+  });
+
+  it('preserves other tool minVersions across project types', () => {
+    for (const projectType of ['onprem', 'saas', 'standalone'] as const) {
+      const tools = getToolsForProjectType(projectType);
+      const git = tools.find(t => t.name === 'git');
+      const node = tools.find(t => t.name === 'node');
+      const docker = tools.find(t => t.name === 'docker');
+      
+      expect(git?.minVersion).toBe('2.30');
+      expect(node?.minVersion).toBe('18.0');
+      expect(docker?.minVersion).toBe('20.0');
+    }
+  });
+
+  it('does not mutate the original TOOLS array', () => {
+    const originalDotnet = TOOLS.find(t => t.name === 'dotnet');
+    getToolsForProjectType('saas');
+    const afterDotnet = TOOLS.find(t => t.name === 'dotnet');
+    expect(afterDotnet?.minVersion).toBe(originalDotnet?.minVersion);
   });
 });

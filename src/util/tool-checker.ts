@@ -7,6 +7,7 @@ export interface ToolInfo {
   checkCommand: string;
   versionPattern?: RegExp;
   minVersion?: string;
+  minVersionByProjectType?: Partial<Record<ProjectType, string>>;
   installMac: string;
   installWin: string;
   required: boolean;
@@ -91,7 +92,12 @@ export const TOOLS: ToolInfo[] = [
     displayName: '.NET SDK',
     checkCommand: 'dotnet --version',
     versionPattern: /([\d.]+)/,
-    minVersion: '10.0',
+    minVersion: '8.0',
+    minVersionByProjectType: {
+      onprem: '10.0',
+      standalone: '10.0',
+      saas: '8.0',
+    },
     installMac: 'brew install dotnet',
     installWin: 'winget install --id Microsoft.DotNet.SDK.10',
     required: false,
@@ -139,12 +145,31 @@ export function checkAllTools(): ToolStatus[] {
 }
 
 /**
- * Returns tools relevant for a specific project type.
+ * Returns tools relevant for a specific project type with appropriate minVersion.
  * Both standalone and on-prem need all tools (Git, Node, Docker, .NET, Aspire).
  * SaaS replaces Aspire/.NET with Azure Functions.
+ * 
+ * minVersion is resolved per project type:
+ * - .NET SDK: 10.0 for onprem/standalone (Aspire templates), 8.0 for saas
  */
 export function getToolsForProjectType(projectType: ProjectType): ToolInfo[] {
-  return TOOLS;
+  return TOOLS.map(tool => {
+    if (tool.minVersionByProjectType?.[projectType]) {
+      return {
+        ...tool,
+        minVersion: tool.minVersionByProjectType[projectType],
+      };
+    }
+    return tool;
+  });
+}
+
+/**
+ * Checks tools for a specific project type, applying project-specific minVersion requirements.
+ */
+export function checkToolsForProjectType(projectType: ProjectType): ToolStatus[] {
+  const tools = getToolsForProjectType(projectType);
+  return tools.map(tool => checkTool(tool));
 }
 
 export function getInstallCommand(tool: ToolInfo): string {
