@@ -6,7 +6,16 @@ import chalk from 'chalk';
 import { toKebabCase, toPascalCase, validatePluginName } from '../util/naming';
 import { generateFancyName } from '../util/name-generator';
 import { scaffold } from '../generators/scaffold';
-import type { ProjectType, DeployTarget, DatabaseType, FrontendType, MongoMode, ScaffoldConfig } from '../types/scaffold';
+import { setupCommand } from './setup';
+import { isFirstRun, markSetupDone } from '../util/first-run';
+import type {
+  ProjectType,
+  DeployTarget,
+  DatabaseType,
+  FrontendType,
+  MongoMode,
+  ScaffoldConfig,
+} from '../types/scaffold';
 
 export interface InitFlags {
   type?: string;
@@ -19,7 +28,10 @@ export interface InitFlags {
 
 function getGitUserName(): string {
   try {
-    return execSync('git config user.name', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+    return execSync('git config user.name', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    }).trim();
   } catch {
     return '';
   }
@@ -36,7 +48,10 @@ function isGhAvailable(): boolean {
 
 const isInteractive = () => process.stdin.isTTY === true;
 
-export async function initCommand(projectNameArg: string | undefined, flags: InitFlags): Promise<void> {
+export async function initCommand(
+  projectNameArg: string | undefined,
+  flags: InitFlags
+): Promise<void> {
   console.log(chalk.blue.bold('\n  MESA Project Scaffolder\n'));
 
   const useDefaults = flags.yes || !isInteractive();
@@ -46,7 +61,11 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
   let projectType: ProjectType;
   if (flags.type) {
     if (!validTypes.includes(flags.type as ProjectType)) {
-      console.error(chalk.red(`Error: Invalid project type "${flags.type}". Must be one of: ${validTypes.join(', ')}`));
+      console.error(
+        chalk.red(
+          `Error: Invalid project type "${flags.type}". Must be one of: ${validTypes.join(', ')}`
+        )
+      );
       process.exit(1);
     }
     projectType = flags.type as ProjectType;
@@ -61,6 +80,14 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
         { value: 'standalone', name: 'Standalone App (PoC)' },
       ],
     });
+  }
+
+  if (isFirstRun() && isInteractive()) {
+    console.log(chalk.blue('  First run detected — checking environment...\n'));
+    const setupOk = await setupCommand(projectType);
+    if (setupOk) {
+      markSetupDone();
+    }
   }
 
   // 2. Project/plugin name (with fancy default)
@@ -253,11 +280,16 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
         });
         console.log(chalk.green('  ✓ ') + `Repository created: ${org}/${pluginName}`);
       } catch {
-        console.log(chalk.yellow('  ⚠ ') + 'GitHub repository creation failed. You can create it manually later.');
+        console.log(
+          chalk.yellow('  ⚠ ') +
+            'GitHub repository creation failed. You can create it manually later.'
+        );
       }
     }
   } else if (!isInteractive()) {
-    console.log(chalk.dim('\n  Tip: Run interactively to auto-create GitHub repo, or use: gh repo create\n'));
+    console.log(
+      chalk.dim('\n  Tip: Run interactively to auto-create GitHub repo, or use: gh repo create\n')
+    );
   } else {
     console.log(chalk.dim('\n  Tip: Install GitHub CLI (gh) to auto-create repos on MESA org.\n'));
   }
@@ -267,7 +299,8 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
   if (projectType === 'standalone') {
     const needsDocker = !(database === 'mongodb' && mongoMode === 'atlas');
     const isFullStack = frontend === 'nextjs';
-    const dbLabel = database === 'postgresql' ? 'PostgreSQL' : database === 'mongodb' ? 'MongoDB' : 'SQL Server';
+    const dbLabel =
+      database === 'postgresql' ? 'PostgreSQL' : database === 'mongodb' ? 'MongoDB' : 'SQL Server';
 
     console.log(chalk.dim('  Prerequisites:'));
     if (needsDocker) {
@@ -293,7 +326,9 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
       console.log('    npm run install:all');
       if (needsDocker) {
         const feLabel = frontend === 'angular' ? 'Angular' : 'React';
-        console.log(`    aspire run            # Starts ${dbLabel} + backend + ${feLabel} frontend + dashboard`);
+        console.log(
+          `    aspire run            # Starts ${dbLabel} + backend + ${feLabel} frontend + dashboard`
+        );
       } else {
         console.log('    npm run dev');
       }
@@ -313,7 +348,11 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     console.log(chalk.dim('  Get started:'));
     console.log(`    cd ${pluginName}`);
     console.log('    npm run install:all');
-    console.log('    npm run dev            # Starts Azure Functions' + (includeFrontend ? ' + Angular dev server' : '') + '\n');
+    console.log(
+      '    npm run dev            # Starts Azure Functions' +
+        (includeFrontend ? ' + Angular dev server' : '') +
+        '\n'
+    );
   } else {
     console.log(chalk.dim('  Prerequisites:'));
     console.log('    - Docker Desktop (for SQL Server container)');
@@ -321,6 +360,10 @@ export async function initCommand(projectNameArg: string | undefined, flags: Ini
     console.log(chalk.dim('  Get started:'));
     console.log(`    cd ${pluginName}`);
     console.log('    npm run install:all');
-    console.log('    aspire run            # Starts SQL Server + backend' + (includeFrontend ? ' + frontend' : '') + ' + dashboard\n');
+    console.log(
+      '    aspire run            # Starts SQL Server + backend' +
+        (includeFrontend ? ' + frontend' : '') +
+        ' + dashboard\n'
+    );
   }
 }

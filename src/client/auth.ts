@@ -1,12 +1,12 @@
 import { AuthResponse, Config, LoginCredentials } from '../types';
-import { baseUrl } from '../util/url-resolver';
+import { authUrl } from '../util/url-resolver';
 
 export const apiPath = {
   authToken: '/auth/token',
 };
 
 export class Auth {
-  private tenantId: string;
+  private config: Config;
   private credentials: LoginCredentials;
 
   constructor(config: Config, credentials?: LoginCredentials) {
@@ -14,25 +14,30 @@ export class Auth {
       throw new Error('Credentials are required');
     }
 
-    this.tenantId = config.client.tenantId;
+    this.config = config;
     this.credentials = credentials;
   }
 
   async getAuthToken() {
     const params = new URLSearchParams({
-      client_id: this.tenantId,
+      client_id: this.config.client.tenantId,
       grant_type: 'password',
       username: this.credentials.username,
       password: this.credentials.password,
     });
 
-    const response = await fetch(`${baseUrl(this.tenantId)}${apiPath.authToken}`, {
+    const response = await fetch(authUrl(this.config.client), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: params,
     });
+
+    if (!response.ok) {
+      throw new Error(`Authentication failed: ${response.status} ${response.statusText}`);
+    }
+
     const data = (await response.json()) as AuthResponse;
     return data;
   }

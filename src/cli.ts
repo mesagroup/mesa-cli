@@ -1,9 +1,11 @@
 import meow from 'meow';
 import chalk from 'chalk';
 import dotenv from 'dotenv';
+import { input, password } from '@inquirer/prompts';
 import { initCommand } from './commands/init';
 import { setupCommand } from './commands/setup';
-import { isFirstRun, markSetupDone } from './util/first-run';
+import type { LoginCredentials } from './types';
+import type { ProjectType } from './types/scaffold';
 
 dotenv.config();
 
@@ -35,6 +37,8 @@ const cli = meow(
 
   Login Options
     --tenant-id    The tenant ID to use for the login
+    --username     Username for password-grant login
+    --password     Password for password-grant login
 
   Examples
     $ mesa init
@@ -47,6 +51,8 @@ const cli = meow(
     flags: {
       type: { type: 'string' },
       tenantId: { type: 'string' },
+      username: { type: 'string' },
+      password: { type: 'string' },
       frontend: { type: 'boolean', default: true },
       author: { type: 'string' },
       description: { type: 'string' },
@@ -56,26 +62,65 @@ const cli = meow(
   }
 );
 
+const VALID_PROJECT_TYPES: ProjectType[] = ['onprem', 'saas', 'standalone'];
+
+function parseProjectType(value?: string): ProjectType | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (!VALID_PROJECT_TYPES.includes(value as ProjectType)) {
+    throw new Error(
+      `Invalid project type "${value}". Must be one of: ${VALID_PROJECT_TYPES.join(', ')}`
+    );
+  }
+
+  return value as ProjectType;
+}
+
+async function resolveLoginCredentials(flags: {
+  username?: string;
+  password?: string;
+}): Promise<LoginCredentials> {
+  let username = flags.username;
+  let passwordValue = flags.password;
+
+  if (!process.stdin.isTTY) {
+    if (!username || !passwordValue) {
+      throw new Error('Login requires --username and --password when stdin is not interactive');
+    }
+
+    return { username, password: passwordValue };
+  }
+
+  if (!username) {
+    username = await input({ message: 'Username:' });
+  }
+
+  if (!passwordValue) {
+    passwordValue = await password({ message: 'Password:' });
+  }
+
+  return { username, password: passwordValue };
+}
+
 async function main() {
   const [command, ...args] = cli.input;
+  const projectType = parseProjectType(cli.flags.type);
 
   switch (command) {
     case 'setup': {
-      await setupCommand();
-      markSetupDone();
+      const setupOk = await setupCommand(projectType);
+      if (setupOk) {
+        const { markSetupDone } = await import('./util/first-run');
+        markSetupDone();
+      }
       break;
     }
 
     case 'init': {
-      // First-run: auto-run setup before init
-      if (isFirstRun() && process.stdin.isTTY) {
-        console.log(chalk.blue('  First run detected — checking environment...\n'));
-        await setupCommand();
-        markSetupDone();
-      }
-
       await initCommand(args[0], {
-        type: cli.flags.type,
+        type: projectType,
         noFrontend: !cli.flags.frontend,
         author: cli.flags.author,
         description: cli.flags.description,
@@ -94,8 +139,13 @@ async function main() {
           baseUrl: process.env.MESA_BASE_URL,
         },
       });
-      const response = await client.login();
-      console.log('Login successful:', response);
+      const credentials = await resolveLoginCredentials({
+        username: cli.flags.username,
+        password: cli.flags.password,
+      });
+      const response = await client.login(credentials);
+      console.log(chalk.green('Login successful.'));
+      console.log(response.access_token);
       break;
     }
 

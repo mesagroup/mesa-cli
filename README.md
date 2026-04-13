@@ -41,14 +41,14 @@ mesa init my-plugin --dry-run -y                # Preview without creating files
 
 Verifies your development environment is ready. Checks and guides installation of:
 
-| Tool | Required | Purpose |
-|------|----------|---------|
-| Git | Yes | Version control; also checks `user.name` and `user.email` configuration |
-| Node.js | Yes | Runtime |
-| Docker | Yes | Local database containers |
-| .NET SDK | No | Only needed for C# AppHost projects |
-| GitHub CLI (`gh`) | No | Repo creation; checks authentication and `mesagroup` org access |
-| Aspire CLI 13.2+ | Yes | Local dev orchestration (TypeScript AppHost) |
+| Tool              | Required | Purpose                                                                 |
+| ----------------- | -------- | ----------------------------------------------------------------------- |
+| Git               | Yes      | Version control; also checks `user.name` and `user.email` configuration |
+| Node.js           | Yes      | Runtime                                                                 |
+| Docker            | Yes      | Local database containers                                               |
+| .NET SDK          | No       | Only needed for C# AppHost projects                                     |
+| GitHub CLI (`gh`) | No       | Repo creation; checks authentication and `mesagroup` org access         |
+| Aspire CLI 13.2+  | Yes      | Local dev orchestration (TypeScript AppHost)                            |
 
 If something is missing, MESA CLI shows the exact install command for your OS and waits for you to install it before re-checking.
 
@@ -60,13 +60,13 @@ Scaffolds a MESAPPA plugin or standalone PoC project. You choose between three p
 
 #### Stack comparison
 
-| Type | Backend | Frontend | Database | Orchestrator | Deploy | CI/CD |
-|------|---------|----------|----------|-------------|--------|-------|
-| **onprem** | Express | Angular 16 (MF) | SQL Server | Aspire | — | — |
-| **saas** | Azure Functions v4 | Angular 16 (MF) | Azure SQL | — | Azure | GitHub Actions |
-| **standalone** (defaults) | Next.js API routes | Next.js | SQL Server | Aspire | Vercel | GitHub Actions |
-| **standalone** + angular | Express | Angular 16 | SQL Server / PostgreSQL / MongoDB | Aspire* | Vercel / Azure | GitHub Actions |
-| **standalone** + react-vite | Express | React + Vite | SQL Server / PostgreSQL / MongoDB | Aspire* | Vercel / Azure | GitHub Actions |
+| Type                        | Backend            | Frontend        | Database                          | Orchestrator | Deploy         | CI/CD          |
+| --------------------------- | ------------------ | --------------- | --------------------------------- | ------------ | -------------- | -------------- |
+| **onprem**                  | Express            | Angular 16 (MF) | SQL Server                        | Aspire       | —              | —              |
+| **saas**                    | Azure Functions v4 | Angular 16 (MF) | Azure SQL                         | —            | Azure          | GitHub Actions |
+| **standalone** (defaults)   | Next.js API routes | Next.js         | SQL Server                        | Aspire       | Vercel         | GitHub Actions |
+| **standalone** + angular    | Express            | Angular 16      | SQL Server / PostgreSQL / MongoDB | Aspire\*     | Vercel / Azure | GitHub Actions |
+| **standalone** + react-vite | Express            | React + Vite    | SQL Server / PostgreSQL / MongoDB | Aspire\*     | Vercel / Azure | GitHub Actions |
 
 \* Aspire is skipped when MongoDB Atlas is selected. All backends use TypeScript. Auth is JWT (jose) for Express-based, Azure AD middleware for SaaS.
 
@@ -157,19 +157,21 @@ my-plugin/
 Authenticate with a MESA instance.
 
 ```bash
-mesa login --tenant-id=mesappa
+mesa login --tenant-id=mesappa --username=my.user --password=secret
 ```
 
 ## Init options
 
-| Flag | Description |
-|------|-------------|
-| `--type <type>` | Project type: `onprem`, `saas`, or `standalone` (default: `onprem`) |
-| `--no-frontend` | Skip Angular frontend generation |
-| `--author <name>` | Author name (default: `git config user.name`) |
-| `--description <text>` | Plugin description |
-| `--dry-run` | Preview generated files without writing |
-| `-y, --yes` | Skip prompts, use auto-generated defaults |
+| Flag                   | Description                                                         |
+| ---------------------- | ------------------------------------------------------------------- |
+| `--type <type>`        | Project type: `onprem`, `saas`, or `standalone` (default: `onprem`) |
+| `--no-frontend`        | Skip Angular frontend generation                                    |
+| `--author <name>`      | Author name (default: `git config user.name`)                       |
+| `--description <text>` | Plugin description                                                  |
+| `--dry-run`            | Preview generated files without writing                             |
+| `-y, --yes`            | Skip prompts, use auto-generated defaults                           |
+| `--username <value>`   | Username for `mesa login`                                           |
+| `--password <value>`   | Password for `mesa login`                                           |
 
 ## After scaffolding
 

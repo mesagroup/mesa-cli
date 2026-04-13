@@ -67,6 +67,7 @@ describe('scaffold', () => {
 
     // No frontend
     expect(existsSync(join(config.outputDir, 'frontend'))).toBe(false);
+    expect(existsSync(join(config.outputDir, 'node_modules'))).toBe(false);
   });
 
   it('creates project with frontend', async () => {
@@ -79,8 +80,14 @@ describe('scaffold', () => {
     expect(existsSync(join(config.outputDir, 'frontend/package.json'))).toBe(true);
     expect(existsSync(join(config.outputDir, 'frontend/angular.json'))).toBe(true);
     expect(existsSync(join(config.outputDir, 'frontend/webpack.config.js'))).toBe(true);
-    expect(existsSync(join(config.outputDir, `frontend/projects/test-plugin/src/public-api.ts`))).toBe(true);
-    expect(existsSync(join(config.outputDir, `frontend/projects/test-plugin/src/lib/test-plugin.module.ts`))).toBe(true);
+    expect(
+      existsSync(join(config.outputDir, `frontend/projects/test-plugin/src/public-api.ts`))
+    ).toBe(true);
+    expect(
+      existsSync(
+        join(config.outputDir, `frontend/projects/test-plugin/src/lib/test-plugin.module.ts`)
+      )
+    ).toBe(true);
   });
 
   it('initializes git repo', async () => {
@@ -159,7 +166,11 @@ describe('scaffold', () => {
   // --- Standalone project type tests ---
 
   it('standalone default: Next.js full-stack + SQL Server', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'nextjs', database: 'sqlserver' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'nextjs',
+      database: 'sqlserver',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -185,7 +196,11 @@ describe('scaffold', () => {
   });
 
   it('standalone with Angular + PostgreSQL creates monorepo', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'angular', database: 'postgresql' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'angular',
+      database: 'postgresql',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -203,7 +218,11 @@ describe('scaffold', () => {
   });
 
   it('standalone with React+Vite creates monorepo', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'react-vite', database: 'sqlserver' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'react-vite',
+      database: 'sqlserver',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -220,7 +239,11 @@ describe('scaffold', () => {
   });
 
   it('standalone .gitignore contains Aspire and Next.js entries', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'nextjs', database: 'sqlserver' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'nextjs',
+      database: 'sqlserver',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -232,7 +255,11 @@ describe('scaffold', () => {
   });
 
   it('standalone CLAUDE.md contains rules', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'nextjs', database: 'sqlserver' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'nextjs',
+      database: 'sqlserver',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -247,7 +274,11 @@ describe('scaffold', () => {
   });
 
   it('standalone includes GitHub Actions CI', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'nextjs', database: 'sqlserver' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'nextjs',
+      database: 'sqlserver',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -256,7 +287,12 @@ describe('scaffold', () => {
   });
 
   it('standalone vercel deploy generates Vercel CI', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'nextjs', database: 'sqlserver', deployTarget: 'vercel' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'nextjs',
+      database: 'sqlserver',
+      deployTarget: 'vercel',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -267,7 +303,12 @@ describe('scaffold', () => {
   });
 
   it('standalone azure deploy generates Azure CI', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'nextjs', database: 'sqlserver', deployTarget: 'azure' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'nextjs',
+      database: 'sqlserver',
+      deployTarget: 'azure',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
@@ -278,7 +319,12 @@ describe('scaffold', () => {
   });
 
   it('standalone MongoDB Atlas skips Aspire', async () => {
-    const config = makeConfig({ projectType: 'standalone', frontend: 'nextjs', database: 'mongodb', mongoMode: 'atlas' });
+    const config = makeConfig({
+      projectType: 'standalone',
+      frontend: 'nextjs',
+      database: 'mongodb',
+      mongoMode: 'atlas',
+    });
     dirs.push(config.outputDir);
 
     await scaffold(config);
