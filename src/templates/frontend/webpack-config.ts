@@ -1,11 +1,11 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	const {pluginName} = config;
-	// Convert kebab-case to camelCase for the module federation name
-	const camelName = pluginName.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+  const { pluginName } = config;
+  // Convert kebab-case to camelCase for the module federation name
+  const camelName = pluginName.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
 
-	return `const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
+  return `const { shareAll, withModuleFederationPlugin } = require('@angular-architects/module-federation/webpack');
 
 module.exports = withModuleFederationPlugin({
   name: '${camelName}',

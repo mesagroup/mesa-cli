@@ -1,7 +1,7 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `import type { Config } from 'postcss-load-config';
+  return `import type { Config } from 'postcss-load-config';
 
 const config: Config = {
   plugins: {

@@ -1,9 +1,9 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	const {pluginClassName} = config;
+  const { pluginClassName } = config;
 
-	return `import { Injectable } from '@angular/core';
+  return `import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 
 @Injectable({

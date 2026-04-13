@@ -1,7 +1,7 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	return `<!doctype html>
+  return `<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />

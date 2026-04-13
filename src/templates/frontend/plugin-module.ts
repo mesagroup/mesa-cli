@@ -1,9 +1,9 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	const {pluginName, pluginClassName} = config;
+  const { pluginName, pluginClassName } = config;
 
-	return `import { NgModule } from '@angular/core';
+  return `import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ${pluginClassName}Component } from './${pluginName}.component';
 

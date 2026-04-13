@@ -1,7 +1,7 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `import { defineConfig } from 'vite';
+  return `import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({

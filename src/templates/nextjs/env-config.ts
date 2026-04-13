@@ -1,9 +1,9 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	const dbFields = getDbFields(config.database, config.mongoMode);
+  const dbFields = getDbFields(config.database, config.mongoMode);
 
-	return `import dotenv from 'dotenv';
+  return `import dotenv from 'dotenv';
 import { z } from 'zod';
 
 dotenv.config({ path: '.env.local' });
@@ -24,9 +24,9 @@ export type Env = z.infer<typeof envSchema>;
 }
 
 function getDbFields(database?: string, mongoMode?: string): string {
-	switch (database) {
-		case 'sqlserver': {
-			return `
+  switch (database) {
+    case 'sqlserver': {
+      return `
   // SQL Server
   DB_SERVER: z.string().default('localhost'),
   DB_NAME: z.string().default('master'),
@@ -35,10 +35,10 @@ function getDbFields(database?: string, mongoMode?: string): string {
   DB_TRUSTED_CONNECTION: z.string().default('false'),
   ConnectionStrings__sqldb: z.string().optional(),
 `;
-		}
+    }
 
-		case 'postgresql': {
-			return `
+    case 'postgresql': {
+      return `
   // PostgreSQL
   DATABASE_URL: z.string().optional(),
   DB_HOST: z.string().default('localhost'),
@@ -49,21 +49,20 @@ function getDbFields(database?: string, mongoMode?: string): string {
   DB_SSL: z.string().default('false'),
   ConnectionStrings__postgresdb: z.string().optional(),
 `;
-		}
+    }
 
-		case 'mongodb': {
-			const lines = `
+    case 'mongodb': {
+      const lines = `
   // MongoDB
   MONGODB_URI: z.string()${mongoMode === 'atlas' ? '' : ".default('mongodb://localhost:27017')"},
   DB_NAME: z.string().default('app'),`;
-			const connectionString = mongoMode === 'local'
-				? `\n  ConnectionStrings__mongodb: z.string().optional(),`
-				: '';
-			return lines + connectionString + '\n';
-		}
+      const connectionString =
+        mongoMode === 'local' ? `\n  ConnectionStrings__mongodb: z.string().optional(),` : '';
+      return lines + connectionString + '\n';
+    }
 
-		default: {
-			return '';
-		}
-	}
+    default: {
+      return '';
+    }
+  }
 }

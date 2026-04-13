@@ -1,7 +1,7 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function renderService(_config: ScaffoldConfig): string {
-	return `import sql from 'mssql';
+  return `import sql from 'mssql';
 import { env } from '../config/env';
 
 let pool: sql.ConnectionPool | null = null;
@@ -33,7 +33,7 @@ export async function getPool(): Promise<sql.ConnectionPool> {
 }
 
 export function renderEnvSchema(_config: ScaffoldConfig): string {
-	return `  DB_SERVER: z.string().min(1),
+  return `  DB_SERVER: z.string().min(1),
   DB_NAME: z.string().min(1),
   DB_USER: z.string().optional(),
   DB_PASSWORD: z.string().optional(),
@@ -42,7 +42,7 @@ export function renderEnvSchema(_config: ScaffoldConfig): string {
 }
 
 export function renderEnvExample(_config: ScaffoldConfig): string {
-	return `# Database (SQL Server)
+  return `# Database (SQL Server)
 DB_SERVER=localhost
 DB_NAME=MyDatabase
 DB_USER=sa
@@ -51,18 +51,18 @@ DB_TRUSTED_CONNECTION=false`;
 }
 
 export function renderHealthCheck(_config: ScaffoldConfig): string {
-	return `    const pool = await getPool();
+  return `    const pool = await getPool();
     await pool.request().query('SELECT 1');`;
 }
 
 export function getHealthCheckImport(): string {
-	return `import { getPool } from '../services/db';`;
+  return `import { getPool } from '../services/db';`;
 }
 
 export function getDependencies(): Record<string, string> {
-	return {mssql: '^11.0.1'};
+  return { mssql: '^11.0.1' };
 }
 
 export function getDevDependencies(): Record<string, string> {
-	return {};
+  return {};
 }

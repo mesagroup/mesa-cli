@@ -1,7 +1,7 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `import express, { type Request, type Response, type NextFunction } from 'express';
+  return `import express, { type Request, type Response, type NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { env } from './config/env';

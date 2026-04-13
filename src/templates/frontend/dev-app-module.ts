@@ -1,9 +1,9 @@
-import type {ScaffoldConfig} from '../../types/scaffold';
+import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(config: ScaffoldConfig): string {
-	const {pluginName, pluginClassName} = config;
+  const { pluginName, pluginClassName } = config;
 
-	return `import { NgModule } from '@angular/core';
+  return `import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule } from '@angular/common/http';
 import { ${pluginClassName}Module } from '../../projects/${pluginName}/src/public-api';

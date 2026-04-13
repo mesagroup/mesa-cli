@@ -1,7 +1,7 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
 export function render(_config: ScaffoldConfig): string {
-	return `import sql from 'mssql';
+  return `import sql from 'mssql';
 import { env } from '../config/env';
 
 let pool: sql.ConnectionPool | null = null;

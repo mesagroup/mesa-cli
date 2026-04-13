@@ -7,6 +7,10 @@ import {
   getPlatformLabel,
   getGitIdentity,
   checkGhOrgAccess,
+  isAdmin,
+  canAutoInstall,
+  autoInstallTool,
+  checkTool,
   type ToolStatus,
 } from '../util/tool-checker';
 
@@ -24,21 +28,42 @@ function printToolTable(results: ToolStatus[]): void {
   }
 }
 
-function printInstallInstructions(missing: ToolStatus[]): void {
+function printInstallInstructions(missing: ToolStatus[], hasAdminPrivileges: boolean): void {
   const platform = getPlatformLabel();
+  const adminNote = hasAdminPrivileges ? '' : chalk.dim(' (user-level install)');
 
-  console.log(chalk.yellow(`\n  Missing tools (${platform}):\n`));
+  console.log(chalk.yellow(`\n  Missing tools (${platform}${adminNote}):\n`));
 
   for (const r of missing) {
-    const cmd = getInstallCommand(r.tool);
     const label = r.tool.required ? '' : chalk.dim(' (optional)');
     console.log(`  ${chalk.bold(r.tool.displayName)}${label}`);
-    console.log(`    ${chalk.cyan(cmd)}\n`);
+
+    if (r.tool.requiresAdmin && !hasAdminPrivileges) {
+      console.log(chalk.red('    ⚠ Requires administrator privileges\n'));
+      if (r.tool.adminAlternatives) {
+        console.log(chalk.dim('    Options:'));
+        for (const alt of r.tool.adminAlternatives) {
+          console.log(chalk.dim(`      • ${alt}`));
+        }
+        console.log('');
+      }
+    } else {
+      const cmd = getInstallCommand(r.tool, !hasAdminPrivileges);
+      const autoInstallAvailable = canAutoInstall(r.tool);
+      const autoNote = autoInstallAvailable ? chalk.dim(' (auto-install available)') : '';
+      console.log(`    ${chalk.cyan(cmd)}${autoNote}\n`);
+    }
   }
 }
 
 async function checkToolsLoop(): Promise<boolean> {
   let allGood = false;
+  const hasAdminPrivileges = isAdmin();
+
+  if (!hasAdminPrivileges) {
+    console.log(chalk.yellow('  ℹ Running without administrator privileges'));
+    console.log(chalk.dim('    User-level install options will be provided where available\n'));
+  }
 
   while (!allGood) {
     console.log(chalk.dim('  Checking required tools...\n'));
@@ -55,7 +80,7 @@ async function checkToolsLoop(): Promise<boolean> {
       break;
     }
 
-    printInstallInstructions(missing);
+    printInstallInstructions(missing, hasAdminPrivileges);
 
     if (missingRequired.length === 0) {
       console.log(chalk.green('  All required tools are installed.'));
@@ -64,8 +89,46 @@ async function checkToolsLoop(): Promise<boolean> {
       break;
     }
 
+    const autoInstallable = missing.filter(
+      r => canAutoInstall(r.tool) && (!r.tool.requiresAdmin || hasAdminPrivileges)
+    );
+
+    if (autoInstallable.length > 0) {
+      const shouldAutoInstall = await confirm({
+        message: `Auto-install ${autoInstallable.length} tool(s) now?`,
+        default: true,
+      });
+
+      if (shouldAutoInstall) {
+        console.log('');
+        for (const tool of autoInstallable) {
+          console.log(chalk.dim(`  Installing ${tool.tool.displayName}...`));
+          const success = await autoInstallTool(tool.tool);
+
+          if (success) {
+            const recheck = checkTool(tool.tool);
+            if (recheck.installed) {
+              console.log(
+                chalk.green(`  ✓ ${tool.tool.displayName} v${recheck.version} installed\n`)
+              );
+            } else {
+              console.log(
+                chalk.yellow(
+                  `  ⚠ ${tool.tool.displayName} installation completed but tool not detected. You may need to restart your terminal.\n`
+                )
+              );
+            }
+          } else {
+            console.log(chalk.red(`  ✗ Failed to install ${tool.tool.displayName}\n`));
+          }
+        }
+
+        continue;
+      }
+    }
+
     const skip = await confirm({
-      message: 'Install the missing tools above, then press Enter to re-check. Skip?',
+      message: 'Install the missing tools manually, then press Enter to re-check. Skip?',
       default: false,
     });
 
@@ -117,7 +180,9 @@ async function checkGitIdentity(): Promise<void> {
   if (updated.name && updated.email) {
     console.log(chalk.green('\n  ✓') + ` Git user: ${updated.name} <${updated.email}>\n`);
   } else {
-    console.log(chalk.yellow('\n  ⚠ Git identity still incomplete. You can configure it later.\n'));
+    console.log(
+      chalk.yellow('\n  ⚠ Git identity still incomplete. You can configure it later.\n')
+    );
   }
 }
 
@@ -160,7 +225,9 @@ async function checkGitHubAccess(): Promise<void> {
     // Re-check
     const updated = checkGhOrgAccess(org);
     if (!updated.authenticated) {
-      console.log(chalk.yellow('\n  ⚠ Still not authenticated. You can run `gh auth login` later.\n'));
+      console.log(
+        chalk.yellow('\n  ⚠ Still not authenticated. You can run `gh auth login` later.\n')
+      );
       return;
     }
 
@@ -172,16 +239,23 @@ async function checkGitHubAccess(): Promise<void> {
   await handleOrgAccess(status, org);
 }
 
-async function handleOrgAccess(status: { ghUser: string; hasOrgAccess: boolean }, org: string): Promise<void> {
+async function handleOrgAccess(
+  status: { ghUser: string; hasOrgAccess: boolean },
+  org: string
+): Promise<void> {
   if (status.hasOrgAccess) {
     console.log(chalk.green('  ✓') + ` Access to ${chalk.bold(org)} organization confirmed\n`);
     return;
   }
 
   console.log(chalk.red('  ✗') + ` No access to ${chalk.bold(org)} organization\n`);
-  console.log(chalk.yellow('  You need to be a member of the organization to create repositories.'));
+  console.log(
+    chalk.yellow('  You need to be a member of the organization to create repositories.')
+  );
   console.log(chalk.dim('  Options:\n'));
-  console.log(`    1. Ask your org admin to invite ${chalk.bold(status.ghUser)} to ${chalk.bold(org)}`);
+  console.log(
+    `    1. Ask your org admin to invite ${chalk.bold(status.ghUser)} to ${chalk.bold(org)}`
+  );
   console.log(`    2. Open: ${chalk.cyan(`https://github.com/orgs/${org}/people`)}`);
   console.log(`    3. Contact your team lead for access\n`);
 
