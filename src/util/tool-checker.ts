@@ -233,10 +233,14 @@ export function checkAllTools(): ToolStatus[] {
 
 /**
  * Returns tools relevant for a specific project type.
- * Both standalone and on-prem need all tools (Git, Node, Docker, .NET, Aspire).
- * SaaS replaces Aspire/.NET with Azure Functions.
+ * SaaS doesn't need Aspire or .NET SDK (uses Azure Functions Core Tools instead).
+ * On-prem and standalone need everything.
  */
 export function getToolsForProjectType(projectType: ProjectType): ToolInfo[] {
+  if (projectType === 'saas') {
+    return TOOLS.filter(t => t.name !== 'aspire' && t.name !== 'dotnet');
+  }
+
   return TOOLS;
 }
 

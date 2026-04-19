@@ -72,15 +72,6 @@ import { render as renderNextjsGlobalsCss } from '../templates/nextjs/globals-cs
 import { render as renderNextjsApiHealth } from '../templates/nextjs/api-health-route';
 import { render as renderNextjsEnvConfig } from '../templates/nextjs/env-config';
 
-// Next.js frontend templates (standalone — with separate Express backend)
-import { render as renderNextFePackageJson } from '../templates/frontend-standalone/package-json';
-import { render as renderNextFeConfig } from '../templates/frontend-standalone/next-config';
-import { render as renderNextFeTsconfig } from '../templates/frontend-standalone/tsconfig';
-import { render as renderNextFePostcssConfig } from '../templates/frontend-standalone/postcss-config';
-import { render as renderNextFeLayout } from '../templates/frontend-standalone/layout-tsx';
-import { render as renderNextFePage } from '../templates/frontend-standalone/page-tsx';
-import { render as renderNextFeGlobalsCss } from '../templates/frontend-standalone/globals-css';
-
 // React + Vite frontend templates (standalone)
 import { render as renderVitePackageJson } from '../templates/frontend-vite/package-json';
 import { render as renderViteConfig } from '../templates/frontend-vite/vite-config';
@@ -247,22 +238,6 @@ function getDbModule(config: ScaffoldConfig) {
     default:
       return sqlserverDb;
   }
-}
-
-function addNextjsFeFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
-  files.push({ relativePath: 'frontend/package.json', content: renderNextFePackageJson(config) });
-  files.push({ relativePath: 'frontend/next.config.ts', content: renderNextFeConfig(config) });
-  files.push({ relativePath: 'frontend/tsconfig.json', content: renderNextFeTsconfig(config) });
-  files.push({
-    relativePath: 'frontend/postcss.config.mts',
-    content: renderNextFePostcssConfig(config),
-  });
-  files.push({ relativePath: 'frontend/src/app/layout.tsx', content: renderNextFeLayout(config) });
-  files.push({ relativePath: 'frontend/src/app/page.tsx', content: renderNextFePage(config) });
-  files.push({
-    relativePath: 'frontend/src/app/globals.css',
-    content: renderNextFeGlobalsCss(config),
-  });
 }
 
 function addViteFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
