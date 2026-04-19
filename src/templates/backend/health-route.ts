@@ -1,15 +1,16 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
+import { getDbModule } from '../db';
 
-export function render(_config: ScaffoldConfig): string {
+export function render(config: ScaffoldConfig): string {
+  const db = getDbModule(config);
   return `import { Router, type Request, type Response } from 'express';
-import { getPool } from '../services/db';
+${db.getHealthCheckImport()}
 
 const router = Router();
 
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const pool = await getPool();
-    await pool.request().query('SELECT 1');
+${db.renderHealthCheck(config)}
     res.json({ status: 'ok', db: 'connected' });
   } catch {
     res.json({ status: 'degraded', db: 'disconnected' });

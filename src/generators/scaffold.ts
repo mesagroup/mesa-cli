@@ -57,9 +57,7 @@ import { render as renderGitHubActions } from '../templates/ci/github-actions';
 import { render as renderGitHubActionsStandalone } from '../templates/ci/github-actions-standalone';
 
 // Database templates (standalone)
-import * as sqlserverDb from '../templates/db/sqlserver';
-import * as postgresqlDb from '../templates/db/postgresql';
-import * as mongodbDb from '../templates/db/mongodb';
+import { getDbModule } from '../templates/db';
 
 // Next.js full-stack templates (standalone — no separate backend)
 import { render as renderNextjsPackageJson } from '../templates/nextjs/package-json';
@@ -229,17 +227,6 @@ function buildSaasManifest(config: ScaffoldConfig): FileEntry[] {
 
 // --- Standalone helpers ---
 
-function getDbModule(config: ScaffoldConfig) {
-  switch (config.database) {
-    case 'postgresql':
-      return postgresqlDb;
-    case 'mongodb':
-      return mongodbDb;
-    default:
-      return sqlserverDb;
-  }
-}
-
 function addViteFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: 'frontend/package.json', content: renderVitePackageJson(config) });
   files.push({ relativePath: 'frontend/vite.config.ts', content: renderViteConfig(config) });
@@ -316,7 +303,7 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
     files.push({ relativePath: 'src/lib/env.ts', content: renderNextjsEnvConfig(config) });
     files.push({
       relativePath: 'src/lib/db.ts',
-      content: getDbModule(config).renderService(config),
+      content: getDbModule(config).renderService(config, 'nextjs'),
     });
   } else {
     // Monorepo: root files + Express backend + chosen frontend

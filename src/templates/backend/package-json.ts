@@ -1,6 +1,8 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
+import { getDbModule } from '../db';
 
 export function render(config: ScaffoldConfig): string {
+  const db = getDbModule(config);
   return JSON.stringify(
     {
       name: `${config.pluginName}-backend`,
@@ -19,8 +21,8 @@ export function render(config: ScaffoldConfig): string {
         express: '^4.21.2',
         helmet: '^8.0.0',
         jose: '^5.9.6',
-        mssql: '^11.0.1',
         zod: '^3.24.2',
+        ...db.getDependencies(),
       },
       devDependencies: {
         '@types/cors': '^2.8.17',
@@ -29,6 +31,7 @@ export function render(config: ScaffoldConfig): string {
         nodemon: '^3.1.9',
         'ts-node': '^10.9.2',
         typescript: '^5.7.2',
+        ...db.getDevDependencies(),
       },
     },
     null,
