@@ -54,18 +54,9 @@ export async function initCommand(
 
   const useDefaults = flags.yes || !isInteractive();
 
-  // 1. Project type selection
-  const validTypes: ProjectType[] = ['onprem', 'saas', 'standalone'];
+  // 1. Project type selection (meow has already validated --type against the allowed choices)
   let projectType: ProjectType;
   if (flags.type) {
-    if (!validTypes.includes(flags.type as ProjectType)) {
-      console.error(
-        chalk.red(
-          `Error: Invalid project type "${flags.type}". Must be one of: ${validTypes.join(', ')}`
-        )
-      );
-      process.exit(1);
-    }
     projectType = flags.type as ProjectType;
   } else if (useDefaults) {
     projectType = 'onprem';
