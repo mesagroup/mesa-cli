@@ -27,6 +27,7 @@ export function render(config: ScaffoldConfig): string {
       private: true,
       type: 'module',
       scripts: {
+        // next dev/start read PORT from env natively (cross-platform)
         dev: 'next dev',
         build: 'next build',
         start: 'next start',

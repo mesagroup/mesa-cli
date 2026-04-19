@@ -320,6 +320,94 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
   return files;
 }
 
+/**
+ * Returns true when `dir` is inside an existing git working tree.
+ * We refuse to `git init` inside another repo to avoid creating
+ * confusing nested repositories.
+ */
+function isInsideExistingGitRepo(dir: string): boolean {
+  try {
+    const out = execSync('git rev-parse --is-inside-work-tree', {
+      cwd: dir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 5000,
+    }).trim();
+    return out === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function getGitIdentityForCommit(authorOverride: string | undefined): {
+  name: string;
+  email: string;
+} {
+  let name = authorOverride;
+  let email: string | undefined;
+  try {
+    if (!name) {
+      name = execSync('git config user.name', {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+        timeout: 5000,
+      }).trim();
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    email = execSync('git config user.email', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 5000,
+    }).trim();
+  } catch {
+    /* ignore */
+  }
+  return {
+    name: name || 'mesa-cli',
+    email: email || 'mesa-cli@noreply.local',
+  };
+}
+
+function initGitRepo(outputDir: string, authorOverride: string | undefined): void {
+  console.log(chalk.blue('\nInitializing git repository...'));
+
+  if (isInsideExistingGitRepo(outputDir)) {
+    console.log(
+      chalk.yellow('  ⚠ ') +
+        'Skipping git init: output directory is inside an existing git repository.'
+    );
+    console.log(
+      chalk.dim(
+        '    Run `git add` and commit the new files from the parent repo, or move the project outside it.'
+      )
+    );
+    return;
+  }
+
+  try {
+    const { name, email } = getGitIdentityForCommit(authorOverride);
+    execSync('git init', { cwd: outputDir, stdio: 'pipe' });
+    execSync('git add .', { cwd: outputDir, stdio: 'pipe' });
+    execSync('git commit -m "✨ Initial scaffold via mesa-cli"', {
+      cwd: outputDir,
+      stdio: 'pipe',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: name,
+        GIT_COMMITTER_NAME: name,
+        GIT_AUTHOR_EMAIL: email,
+        GIT_COMMITTER_EMAIL: email,
+      },
+    });
+    console.log(chalk.green('  ✓ ') + 'Git repository initialized with initial commit');
+  } catch {
+    console.log(chalk.yellow('  ⚠ ') + 'Git initialization failed (git may not be installed)');
+  }
+}
+
 export async function scaffold(config: ScaffoldConfig): Promise<void> {
   const { outputDir, pluginName } = config;
 
@@ -392,24 +480,7 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
     }
   }
 
-  // Initialize git
-  console.log(chalk.blue('\nInitializing git repository...'));
-  try {
-    execSync('git init', { cwd: outputDir, stdio: 'pipe' });
-    execSync('git add .', { cwd: outputDir, stdio: 'pipe' });
-    execSync('git commit -m "✨ Initial scaffold via mesa-cli"', {
-      cwd: outputDir,
-      stdio: 'pipe',
-      env: {
-        ...process.env,
-        GIT_AUTHOR_NAME: config.author || 'mesa-cli',
-        GIT_COMMITTER_NAME: config.author || 'mesa-cli',
-      },
-    });
-    console.log(chalk.green('  ✓ ') + 'Git repository initialized with initial commit');
-  } catch {
-    console.log(chalk.yellow('  ⚠ ') + 'Git initialization failed (git may not be installed)');
-  }
+  initGitRepo(outputDir, config.author);
 
   // Summary
   const typeLabels: Record<string, string> = {
