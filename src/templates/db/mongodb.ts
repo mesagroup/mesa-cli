@@ -1,8 +1,12 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
-export function renderService(_config: ScaffoldConfig): string {
+export function renderService(
+  _config: ScaffoldConfig,
+  context: 'express' | 'nextjs' = 'express'
+): string {
+  const envImport = context === 'nextjs' ? './env' : '../config/env';
   return `import { MongoClient, type Db } from 'mongodb';
-import { env } from '../config/env';
+import { env } from '${envImport}';
 
 let client: MongoClient | null = null;
 
@@ -44,8 +48,9 @@ export function renderHealthCheck(_config: ScaffoldConfig): string {
     await db.command({ ping: 1 });`;
 }
 
-export function getHealthCheckImport(): string {
-  return `import { getDb } from '../services/db';`;
+export function getHealthCheckImport(context: 'express' | 'nextjs' = 'express'): string {
+  const path = context === 'nextjs' ? '@/lib/db' : '../services/db';
+  return `import { getDb } from '${path}';`;
 }
 
 export function getDependencies(): Record<string, string> {

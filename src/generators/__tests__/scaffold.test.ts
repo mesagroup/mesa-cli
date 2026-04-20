@@ -1,10 +1,15 @@
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
-import { existsSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execSync } from 'node:child_process';
 import { scaffold } from '../scaffold';
 import type { ScaffoldConfig } from '../../types/scaffold';
+
+function makeParent(dir: string): string {
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
 
 // Skip npm install + aspire add during tests
 beforeAll(() => {
@@ -98,6 +103,20 @@ describe('scaffold', () => {
     expect(existsSync(join(config.outputDir, '.git'))).toBe(true);
     const log = execSync('git log --oneline', { cwd: config.outputDir, encoding: 'utf8' });
     expect(log).toContain('Initial scaffold via mesa-cli');
+  });
+
+  it('skips git init when output dir is inside an existing repo', async () => {
+    const parent = makeTmpDir();
+    dirs.push(parent);
+    execSync('git init -q', { cwd: makeParent(parent) });
+    const config = makeConfig({ outputDir: join(parent, 'inner-project') });
+
+    await scaffold(config);
+
+    // Project files are still written
+    expect(existsSync(join(config.outputDir, 'package.json'))).toBe(true);
+    // …but no nested .git directory was created
+    expect(existsSync(join(config.outputDir, '.git'))).toBe(false);
   });
 
   it('.gitignore contains required entries', async () => {

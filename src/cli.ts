@@ -12,8 +12,9 @@ if (process.argv.includes('-v')) {
   process.argv[process.argv.indexOf('-v')] = '--version';
 }
 
-const cli = meow(
-  `
+function buildCli() {
+  return meow(
+    `
   Usage
     $ mesa <command> [options]
 
@@ -42,19 +43,28 @@ const cli = meow(
     $ mesa setup
     $ mesa login --tenant-id=mesappa
 `,
-  {
-    importMeta: import.meta,
-    flags: {
-      type: { type: 'string' },
-      tenantId: { type: 'string' },
-      frontend: { type: 'boolean', default: true },
-      author: { type: 'string' },
-      description: { type: 'string' },
-      dryRun: { type: 'boolean', default: false },
-      yes: { type: 'boolean', shortFlag: 'y', default: false },
-    },
-  }
-);
+    {
+      importMeta: import.meta,
+      flags: {
+        type: { type: 'string', choices: ['onprem', 'saas', 'standalone'] as const },
+        tenantId: { type: 'string' },
+        frontend: { type: 'boolean', default: true },
+        author: { type: 'string' },
+        description: { type: 'string' },
+        dryRun: { type: 'boolean', default: false },
+        yes: { type: 'boolean', shortFlag: 'y', default: false },
+      },
+    }
+  );
+}
+
+let cli: ReturnType<typeof buildCli>;
+try {
+  cli = buildCli();
+} catch (error) {
+  console.error(chalk.red('Error: ') + (error instanceof Error ? error.message : String(error)));
+  process.exit(1);
+}
 
 async function main() {
   const [command, ...args] = cli.input;
@@ -88,14 +98,33 @@ async function main() {
     case 'login': {
       const { ClientSDK } = await import('./client/client');
       const tenantId = cli.flags.tenantId ?? process.env.MESA_INSTANCE ?? 'default';
+
+      let username = process.env.MESA_USERNAME;
+      let pwd = process.env.MESA_PASSWORD;
+
+      if (!username || !pwd) {
+        if (!process.stdin.isTTY) {
+          console.error(
+            chalk.red(
+              'Error: `mesa login` needs MESA_USERNAME and MESA_PASSWORD env vars when running non-interactively.'
+            )
+          );
+          process.exit(1);
+        }
+
+        const { input, password } = await import('@inquirer/prompts');
+        username ??= await input({ message: `Username for ${tenantId}:` });
+        pwd ??= await password({ message: 'Password:', mask: '*' });
+      }
+
       const client = new ClientSDK({
-        client: {
-          tenantId,
-          baseUrl: process.env.MESA_BASE_URL,
-        },
+        client: { tenantId, baseUrl: process.env.MESA_BASE_URL },
       });
-      const response = await client.login();
-      console.log('Login successful:', response);
+      const response = await client.login({ username, password: pwd });
+      console.log(chalk.green('  ✓ ') + `Logged in as ${chalk.bold(username)} (${tenantId})`);
+      console.log(
+        chalk.dim(`  Token expires in ${response.expires_in}s, type ${response.token_type}`)
+      );
       break;
     }
 

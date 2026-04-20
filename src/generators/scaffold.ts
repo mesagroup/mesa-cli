@@ -57,9 +57,7 @@ import { render as renderGitHubActions } from '../templates/ci/github-actions';
 import { render as renderGitHubActionsStandalone } from '../templates/ci/github-actions-standalone';
 
 // Database templates (standalone)
-import * as sqlserverDb from '../templates/db/sqlserver';
-import * as postgresqlDb from '../templates/db/postgresql';
-import * as mongodbDb from '../templates/db/mongodb';
+import { getDbModule } from '../templates/db';
 
 // Next.js full-stack templates (standalone — no separate backend)
 import { render as renderNextjsPackageJson } from '../templates/nextjs/package-json';
@@ -71,15 +69,6 @@ import { render as renderNextjsPage } from '../templates/nextjs/page-tsx';
 import { render as renderNextjsGlobalsCss } from '../templates/nextjs/globals-css';
 import { render as renderNextjsApiHealth } from '../templates/nextjs/api-health-route';
 import { render as renderNextjsEnvConfig } from '../templates/nextjs/env-config';
-
-// Next.js frontend templates (standalone — with separate Express backend)
-import { render as renderNextFePackageJson } from '../templates/frontend-standalone/package-json';
-import { render as renderNextFeConfig } from '../templates/frontend-standalone/next-config';
-import { render as renderNextFeTsconfig } from '../templates/frontend-standalone/tsconfig';
-import { render as renderNextFePostcssConfig } from '../templates/frontend-standalone/postcss-config';
-import { render as renderNextFeLayout } from '../templates/frontend-standalone/layout-tsx';
-import { render as renderNextFePage } from '../templates/frontend-standalone/page-tsx';
-import { render as renderNextFeGlobalsCss } from '../templates/frontend-standalone/globals-css';
 
 // React + Vite frontend templates (standalone)
 import { render as renderVitePackageJson } from '../templates/frontend-vite/package-json';
@@ -238,33 +227,6 @@ function buildSaasManifest(config: ScaffoldConfig): FileEntry[] {
 
 // --- Standalone helpers ---
 
-function getDbModule(config: ScaffoldConfig) {
-  switch (config.database) {
-    case 'postgresql':
-      return postgresqlDb;
-    case 'mongodb':
-      return mongodbDb;
-    default:
-      return sqlserverDb;
-  }
-}
-
-function addNextjsFeFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
-  files.push({ relativePath: 'frontend/package.json', content: renderNextFePackageJson(config) });
-  files.push({ relativePath: 'frontend/next.config.ts', content: renderNextFeConfig(config) });
-  files.push({ relativePath: 'frontend/tsconfig.json', content: renderNextFeTsconfig(config) });
-  files.push({
-    relativePath: 'frontend/postcss.config.mts',
-    content: renderNextFePostcssConfig(config),
-  });
-  files.push({ relativePath: 'frontend/src/app/layout.tsx', content: renderNextFeLayout(config) });
-  files.push({ relativePath: 'frontend/src/app/page.tsx', content: renderNextFePage(config) });
-  files.push({
-    relativePath: 'frontend/src/app/globals.css',
-    content: renderNextFeGlobalsCss(config),
-  });
-}
-
 function addViteFrontendFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: 'frontend/package.json', content: renderVitePackageJson(config) });
   files.push({ relativePath: 'frontend/vite.config.ts', content: renderViteConfig(config) });
@@ -341,7 +303,7 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
     files.push({ relativePath: 'src/lib/env.ts', content: renderNextjsEnvConfig(config) });
     files.push({
       relativePath: 'src/lib/db.ts',
-      content: getDbModule(config).renderService(config),
+      content: getDbModule(config).renderService(config, 'nextjs'),
     });
   } else {
     // Monorepo: root files + Express backend + chosen frontend
@@ -356,6 +318,94 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
   }
 
   return files;
+}
+
+/**
+ * Returns true when `dir` is inside an existing git working tree.
+ * We refuse to `git init` inside another repo to avoid creating
+ * confusing nested repositories.
+ */
+function isInsideExistingGitRepo(dir: string): boolean {
+  try {
+    const out = execSync('git rev-parse --is-inside-work-tree', {
+      cwd: dir,
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 5000,
+    }).trim();
+    return out === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function getGitIdentityForCommit(authorOverride: string | undefined): {
+  name: string;
+  email: string;
+} {
+  let name = authorOverride;
+  let email: string | undefined;
+  try {
+    if (!name) {
+      name = execSync('git config user.name', {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore'],
+        timeout: 5000,
+      }).trim();
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    email = execSync('git config user.email', {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+      timeout: 5000,
+    }).trim();
+  } catch {
+    /* ignore */
+  }
+  return {
+    name: name || 'mesa-cli',
+    email: email || 'mesa-cli@noreply.local',
+  };
+}
+
+function initGitRepo(outputDir: string, authorOverride: string | undefined): void {
+  console.log(chalk.blue('\nInitializing git repository...'));
+
+  if (isInsideExistingGitRepo(outputDir)) {
+    console.log(
+      chalk.yellow('  ⚠ ') +
+        'Skipping git init: output directory is inside an existing git repository.'
+    );
+    console.log(
+      chalk.dim(
+        '    Run `git add` and commit the new files from the parent repo, or move the project outside it.'
+      )
+    );
+    return;
+  }
+
+  try {
+    const { name, email } = getGitIdentityForCommit(authorOverride);
+    execSync('git init', { cwd: outputDir, stdio: 'pipe' });
+    execSync('git add .', { cwd: outputDir, stdio: 'pipe' });
+    execSync('git commit -m "✨ Initial scaffold via mesa-cli"', {
+      cwd: outputDir,
+      stdio: 'pipe',
+      env: {
+        ...process.env,
+        GIT_AUTHOR_NAME: name,
+        GIT_COMMITTER_NAME: name,
+        GIT_AUTHOR_EMAIL: email,
+        GIT_COMMITTER_EMAIL: email,
+      },
+    });
+    console.log(chalk.green('  ✓ ') + 'Git repository initialized with initial commit');
+  } catch {
+    console.log(chalk.yellow('  ⚠ ') + 'Git initialization failed (git may not be installed)');
+  }
 }
 
 export async function scaffold(config: ScaffoldConfig): Promise<void> {
@@ -430,24 +480,7 @@ export async function scaffold(config: ScaffoldConfig): Promise<void> {
     }
   }
 
-  // Initialize git
-  console.log(chalk.blue('\nInitializing git repository...'));
-  try {
-    execSync('git init', { cwd: outputDir, stdio: 'pipe' });
-    execSync('git add .', { cwd: outputDir, stdio: 'pipe' });
-    execSync('git commit -m "✨ Initial scaffold via mesa-cli"', {
-      cwd: outputDir,
-      stdio: 'pipe',
-      env: {
-        ...process.env,
-        GIT_AUTHOR_NAME: config.author || 'mesa-cli',
-        GIT_COMMITTER_NAME: config.author || 'mesa-cli',
-      },
-    });
-    console.log(chalk.green('  ✓ ') + 'Git repository initialized with initial commit');
-  } catch {
-    console.log(chalk.yellow('  ⚠ ') + 'Git initialization failed (git may not be installed)');
-  }
+  initGitRepo(outputDir, config.author);
 
   // Summary
   const typeLabels: Record<string, string> = {

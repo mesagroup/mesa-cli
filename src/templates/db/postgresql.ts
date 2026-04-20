@@ -1,8 +1,12 @@
 import type { ScaffoldConfig } from '../../types/scaffold';
 
-export function renderService(_config: ScaffoldConfig): string {
+export function renderService(
+  _config: ScaffoldConfig,
+  context: 'express' | 'nextjs' = 'express'
+): string {
+  const envImport = context === 'nextjs' ? './env' : '../config/env';
   return `import { Pool } from 'pg';
-import { env } from '../config/env';
+import { env } from '${envImport}';
 
 let pool: Pool | null = null;
 
@@ -51,8 +55,9 @@ export function renderHealthCheck(_config: ScaffoldConfig): string {
     await pool.query('SELECT 1');`;
 }
 
-export function getHealthCheckImport(): string {
-  return `import { getPool } from '../services/db';`;
+export function getHealthCheckImport(context: 'express' | 'nextjs' = 'express'): string {
+  const path = context === 'nextjs' ? '@/lib/db' : '../services/db';
+  return `import { getPool } from '${path}';`;
 }
 
 export function getDependencies(): Record<string, string> {
