@@ -12,6 +12,15 @@ export interface ToolInfo {
   installMacUserLevel?: string;
   autoInstallWin?: () => Promise<boolean>;
   autoInstallMac?: () => Promise<boolean>;
+  /** Shell command to upgrade the tool to the latest version (admin/system scope). */
+  upgradeMac?: string;
+  upgradeWin?: string;
+  /** Shell command to upgrade at user-scope (no admin). */
+  upgradeMacUserLevel?: string;
+  upgradeWinUserLevel?: string;
+  /** Programmatic user-scope upgrade hooks (mirror autoInstall*). */
+  autoUpgradeMac?: () => Promise<boolean>;
+  autoUpgradeWin?: () => Promise<boolean>;
   requiresAdmin?: boolean;
   adminAlternatives?: string[];
   required: boolean;
@@ -130,6 +139,10 @@ export const TOOLS: ToolInfo[] = [
     installMacUserLevel: 'brew install git',
     autoInstallWin: installGitUserLevel,
     autoInstallMac: installGitUserLevel,
+    upgradeMac: 'brew upgrade git',
+    upgradeWin: 'winget upgrade --id Git.Git',
+    upgradeMacUserLevel: 'brew upgrade git',
+    upgradeWinUserLevel: 'winget upgrade --id Git.Git',
     required: true,
   },
   {
@@ -145,6 +158,10 @@ export const TOOLS: ToolInfo[] = [
       'curl -fsSL https://fnm.vercel.app/install | bash && source ~/.bashrc && fnm install --lts && fnm use lts-latest',
     autoInstallWin: installNodeUserLevel,
     autoInstallMac: installNodeUserLevel,
+    upgradeMac: 'brew upgrade node',
+    upgradeWin: 'winget upgrade --id OpenJS.NodeJS.LTS',
+    upgradeMacUserLevel: 'fnm install --lts && fnm use lts-latest',
+    upgradeWinUserLevel: 'fnm install --lts; fnm use lts-latest',
     required: true,
   },
   {
@@ -158,6 +175,10 @@ export const TOOLS: ToolInfo[] = [
     installMacUserLevel: 'brew install gh',
     autoInstallWin: installGitHubCLIUserLevel,
     autoInstallMac: installGitHubCLIUserLevel,
+    upgradeMac: 'brew upgrade gh',
+    upgradeWin: 'winget upgrade --id GitHub.cli',
+    upgradeMacUserLevel: 'brew upgrade gh',
+    upgradeWinUserLevel: 'winget upgrade --id GitHub.cli --scope user',
     required: false,
   },
   {
@@ -167,6 +188,8 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /Docker version ([\d.]+)/,
     installMac: 'brew install --cask docker',
     installWin: 'winget install --id Docker.DockerDesktop',
+    upgradeMac: 'brew upgrade --cask docker',
+    upgradeWin: 'winget upgrade --id Docker.DockerDesktop',
     requiresAdmin: true,
     adminAlternatives: [
       'Ask your IT department to install Docker Desktop',
@@ -188,6 +211,15 @@ export const TOOLS: ToolInfo[] = [
       'curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 10.0 --install-dir $HOME/.dotnet',
     autoInstallWin: installDotNetUserLevel,
     autoInstallMac: installDotNetUserLevel,
+    upgradeMac: 'brew upgrade dotnet',
+    upgradeWin: 'winget upgrade --id Microsoft.DotNet.SDK.10',
+    // Re-running dotnet-install.* with the same channel pulls the latest patch.
+    upgradeMacUserLevel:
+      'curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 10.0 --install-dir $HOME/.dotnet',
+    upgradeWinUserLevel:
+      'powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1; ./dotnet-install.ps1 -Channel 10.0 -InstallDir $HOME/.dotnet; Remove-Item dotnet-install.ps1"',
+    autoUpgradeMac: installDotNetUserLevel,
+    autoUpgradeWin: installDotNetUserLevel,
     required: false,
   },
   {
@@ -201,6 +233,13 @@ export const TOOLS: ToolInfo[] = [
     installMacUserLevel: 'curl -sSL https://aspire.dev/install.sh | bash',
     autoInstallWin: installAspireUserLevel,
     autoInstallMac: installAspireUserLevel,
+    // The Aspire installer is idempotent; re-running pulls the latest version.
+    upgradeMac: 'curl -sSL https://aspire.dev/install.sh | bash',
+    upgradeWin: 'irm https://aspire.dev/install.ps1 | iex',
+    upgradeMacUserLevel: 'curl -sSL https://aspire.dev/install.sh | bash',
+    upgradeWinUserLevel: 'irm https://aspire.dev/install.ps1 | iex',
+    autoUpgradeMac: installAspireUserLevel,
+    autoUpgradeWin: installAspireUserLevel,
     required: true,
   },
 ];
@@ -286,6 +325,56 @@ export async function autoInstallTool(tool: ToolInfo): Promise<boolean> {
 
   try {
     return await installer();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Returns the platform-appropriate upgrade command for `tool`, or undefined
+ * if no upgrade is supported on this platform.
+ */
+export function getUpgradeCommand(tool: ToolInfo, preferUserLevel = false): string | undefined {
+  const hasAdmin = isAdmin();
+
+  if (preferUserLevel || !hasAdmin) {
+    const userLevelCmd = isWindows ? tool.upgradeWinUserLevel : tool.upgradeMacUserLevel;
+    if (userLevelCmd) {
+      return userLevelCmd;
+    }
+  }
+
+  return isWindows ? tool.upgradeWin : tool.upgradeMac;
+}
+
+export function canUpgrade(tool: ToolInfo): boolean {
+  return Boolean(getUpgradeCommand(tool));
+}
+
+/**
+ * Runs the upgrade command for `tool`. Returns true on a clean exit.
+ * Always streams output so users can see what their package manager is doing.
+ */
+export async function upgradeTool(tool: ToolInfo): Promise<boolean> {
+  const programmatic = isWindows ? tool.autoUpgradeWin : tool.autoUpgradeMac;
+  if (programmatic) {
+    try {
+      return await programmatic();
+    } catch {
+      return false;
+    }
+  }
+
+  const cmd = getUpgradeCommand(tool);
+  if (!cmd) return false;
+
+  try {
+    execSync(cmd, {
+      stdio: 'inherit',
+      timeout: 300_000,
+      shell: isWindows ? undefined : '/bin/bash',
+    });
+    return true;
   } catch {
     return false;
   }
