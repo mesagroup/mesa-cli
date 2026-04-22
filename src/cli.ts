@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 import { initCommand } from './commands/init';
 import { setupCommand } from './commands/setup';
+import { updateCommand } from './commands/update';
 import { isFirstRun, markSetupDone } from './util/first-run';
 
 dotenv.config();
@@ -21,6 +22,7 @@ function buildCli() {
   Commands
     init     Scaffold a new MESAPPA plugin or standalone PoC project
     setup    Check and install required development tools
+    update   Update the MESA CLI and required dev tools to their latest versions
     login    Login to your account and obtain an auth token
 
   Options
@@ -34,6 +36,12 @@ function buildCli() {
     --dry-run      Show what would be created without writing files
     -y, --yes      Skip prompts, use defaults
 
+  Update Options
+    --cli-only     Only update the CLI (skip dev tools)
+    --tools-only   Only update dev tools (skip the CLI)
+    --dry-run      Show what would be updated without running anything
+    -y, --yes      Skip confirmation prompts
+
   Login Options
     --tenant-id    The tenant ID to use for the login
 
@@ -41,6 +49,8 @@ function buildCli() {
     $ mesa init
     $ mesa init my-plugin --no-frontend
     $ mesa setup
+    $ mesa update
+    $ mesa update --tools-only --dry-run
     $ mesa login --tenant-id=mesappa
 `,
     {
@@ -53,6 +63,8 @@ function buildCli() {
         description: { type: 'string' },
         dryRun: { type: 'boolean', default: false },
         yes: { type: 'boolean', shortFlag: 'y', default: false },
+        cliOnly: { type: 'boolean', default: false },
+        toolsOnly: { type: 'boolean', default: false },
       },
     }
   );
@@ -73,6 +85,16 @@ async function main() {
     case 'setup': {
       await setupCommand();
       markSetupDone();
+      break;
+    }
+
+    case 'update': {
+      await updateCommand({
+        cliOnly: cli.flags.cliOnly,
+        toolsOnly: cli.flags.toolsOnly,
+        dryRun: cli.flags.dryRun,
+        yes: cli.flags.yes,
+      });
       break;
     }
 

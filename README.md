@@ -152,6 +152,20 @@ my-plugin/
 └── .gitignore
 ```
 
+### `mesa update`
+
+Updates the MESA CLI itself, then upgrades each detected dev tool to its latest version.
+
+```bash
+mesa update                  # Update CLI + all installed tools
+mesa update --cli-only       # Only upgrade the CLI
+mesa update --tools-only     # Only upgrade dev tools (Git, Node, gh, Docker, .NET SDK, Aspire CLI)
+mesa update --dry-run        # Print the upgrade plan without running anything
+mesa update -y               # Skip confirmation prompts (CI / scripts)
+```
+
+The CLI's install method (`npm -g`, `pnpm -g`, `yarn global`, local) is auto-detected; if it can't be detected, the manual `npm install -g @mesagroup/mesa-cli@latest` command is printed instead. Tool upgrades currently support macOS (Homebrew, fnm) and Windows (winget, fnm) — on Linux the command exits cleanly with a hint to use the distro package manager.
+
 ### `mesa login`
 
 Authenticate with a MESA instance.
