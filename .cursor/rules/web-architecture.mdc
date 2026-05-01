@@ -1,0 +1,44 @@
+---
+description: MESA web architecture best practices (the same rules that mesa-cli embeds in every scaffolded project)
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Web architecture rules
+
+## Stack defaults
+
+- **Database**: a managed Postgres (Neon, Supabase, RDS, Azure Postgres). **Never SQLite**
+  for new projects. SQL Server is acceptable for MESAPPA on-prem plugins only.
+- **Backend**: Express or Hono (Node.js) or Azure Functions for SaaS plugins.
+- **Frontend**: Next.js 15 (App Router) or Angular 16 — depends on project type.
+- **Storage**: Vercel Blob (`@vercel/blob`) for prototypes; Azure Blob for SaaS.
+- **Auth**: username + password stored as bcrypt/argon2 hash, JWT issued with `jose`.
+
+## Endpoints
+
+- All HTTP endpoints are **REST**: resource nouns, plural, methods map to actions.
+- No GraphQL in MESA projects unless explicitly approved.
+- Use HTTP status codes correctly: 200 / 201 / 204 / 400 / 401 / 403 / 404 / 409 / 422 / 500.
+- Pagination via `?limit` + `?cursor`; never `?page` over offset for large tables.
+- Always return JSON: `{ data: ..., error: ... }` shape.
+
+## Layering
+
+- Routes are **thin**. They parse input (Zod), call a service, return JSON.
+- Business logic lives in `services/`. Pure functions where possible.
+- Database access lives in `repositories/` (or via the ORM client). Routes never
+  touch the DB directly.
+
+## Environments
+
+- Always define **`production`** and **`preview`** environments in GitHub Actions
+  (`environment:` job key) and in Vercel.
+- Secrets are scoped per environment.
+- No automatic deploy on push/PR. Use `workflow_dispatch` with an `environment`
+  input, or a tag-triggered workflow.
+
+## Verification
+
+Run `mesa verify` on every generated project before merging. CI should run it as well.

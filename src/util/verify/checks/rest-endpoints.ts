@@ -2,8 +2,13 @@ import path from 'node:path';
 import { collectAllDeps, walkByExt, safeRead } from '../fs-helpers';
 import type { Check, CheckResult } from '../types';
 
+// Match `<identifier>.<method>('/...', ...)` where method is an HTTP verb.
+// Limit to file-scope identifier names (Hono router instances commonly use named
+// constants like `auth`, `users`, etc.). We keep it permissive (any identifier)
+// but require the path arg to start with a string literal to avoid matching
+// chained methods like `c.get('user')`.
 const REST_HANDLER_RE =
-  /\b(?:app|router|api|hono|fastify)\b\.(?:get|post|put|patch|delete|options|head)\s*\(/;
+  /\b[A-Za-z_$][A-Za-z0-9_$]*\.(?:get|post|put|patch|delete|options|head)\s*\(\s*['"`]/;
 const NEXT_ROUTE_EXPORT_RE =
   /^export\s+(?:async\s+)?(?:const|function)\s+(GET|POST|PUT|PATCH|DELETE|OPTIONS|HEAD)\b/m;
 
