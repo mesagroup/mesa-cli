@@ -28,8 +28,12 @@ tsup produces two bundles (see `tsup.config.ts`):
 ### CLI commands
 
 - **`mesa init [name]`** — Interactive wizard (`@inquirer/prompts`) that collects project config, then calls `scaffold()`. Supports `--dry-run`, `--yes` (skip prompts), `--no-frontend`. On first run, auto-triggers `setup` before scaffolding.
-- **`mesa setup`** — Checks required dev tools (Git, Node, Docker, .NET SDK, Aspire CLI, gh). Persists completion marker to `~/.mesa-cli/setup-done`.
+- **`mesa prototype [name]`** — Scaffolds a Vercel + Next.js + Hono + Neon Postgres monorepo. See `src/generators/prototype-scaffold.ts` and `src/templates/prototype/**`.
+- **`mesa verify`** — Architecture audit: 5 checks (not-sqlite, REST, username+password auth, Vercel Blob storage, prod+preview environments). Implementations under `src/util/verify/checks/`.
+- **`mesa setup`** — Checks required dev tools (Git, Node, Docker, .NET SDK, Aspire CLI, gh). With `--yes`, auto-installs everything possible. Docker is **optional**. Persists completion marker to `~/.mesa-cli/setup-done`.
 - **`mesa login`** — Authenticates via `ClientSDK` against the MESA API (`{tenantId}.api.azurewebsites.net`).
+
+Every command except `mesa verify --json` prints the MESA ASCII banner. Suppress with `MESA_NO_BANNER=1` or `--quiet`.
 
 ### Environment variables
 
@@ -61,12 +65,33 @@ Each template file exports `render(config: ScaffoldConfig): string`. The scaffol
 2. **Write** — Creates directories (sorted parent-first), then writes all files.
 3. **Git init** — Runs `git init`, `git add .`, and creates initial commit. Optionally offers GitHub repo creation via `gh` CLI.
 
-### Project types
+### Project types (init)
 
 Three project types with different template combinations:
 - **`onprem`** — Express backend + Angular 16 (Module Federation) frontend + SQL Server + .NET Aspire orchestrator
 - **`saas`** — Azure Functions backend + Angular 16 frontend + Azure SQL + GitHub Actions CI
 - **`standalone`** — Configurable stack: database (sqlserver/postgresql/mongodb), frontend (nextjs/angular/react-vite), deploy target (vercel/azure). When frontend is `nextjs`, scaffolds a single Next.js app with API routes (no separate backend). Otherwise scaffolds a monorepo with Express backend.
+
+### Prototype scaffolder
+
+`mesa prototype` is a separate generator (`src/generators/prototype-scaffold.ts`) that
+produces a pnpm workspace with `apps/web` (Next.js), `apps/api` (Hono), and
+`packages/db` (Drizzle + Neon). Always wires:
+- Vercel Blob storage (`@vercel/blob`).
+- Username + password auth (bcryptjs + jose JWT) with a `users` table.
+- `.github/workflows/deploy.yml` triggered ONLY by `workflow_dispatch` with an
+  `environment` input (preview/production). CI in `ci.yml` runs lint+build on push/PR.
+
+### Cursor rules + Claude skills
+
+`mesa init` and `mesa prototype` both inject:
+- `.cursor/rules/{web-architecture,security,testing}.mdc`
+- `.claude/skills/{architecture-audit,rest-api-design,secrets-management}.md`
+
+`mesa prototype` additionally includes `.claude/skills/vercel-neon-deployment.md`.
+
+Source: `src/templates/shared/{cursor-rules,claude-skills}.ts`. The same files are
+also kept in this repo's `.cursor/rules/` and `.claude/skills/`.
 
 ### Database templates (`templates/db/`)
 

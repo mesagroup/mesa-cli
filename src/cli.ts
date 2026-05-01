@@ -15,6 +15,18 @@ if (process.argv.includes('-v')) {
   process.argv[process.argv.indexOf('-v')] = '--version';
 }
 
+// Show the banner before meow takes over (meow exits on --help/--version,
+// and we want users to see MESA on those invocations too).
+const earlyQuiet =
+  process.argv.includes('--quiet') ||
+  process.argv.includes('--version') ||
+  process.argv.includes('-v');
+const cmdArg = process.argv.slice(2).find(a => !a.startsWith('-'));
+const isJsonVerifyEarly = cmdArg === 'verify' && process.argv.includes('--json');
+if (!isJsonVerifyEarly) {
+  printBanner({ quiet: earlyQuiet, subtitle: 'Scaffolder & architecture toolkit' });
+}
+
 const cli = meow(
   `
   Usage
@@ -84,12 +96,6 @@ const cli = meow(
 
 async function main() {
   const [command, ...args] = cli.input;
-
-  // Banner: skip for verify --json (machine output) and when --quiet / env disables it.
-  const isJsonVerify = command === 'verify' && cli.flags.json;
-  if (!isJsonVerify) {
-    printBanner({ quiet: cli.flags.quiet, subtitle: 'Scaffolder & architecture toolkit' });
-  }
 
   switch (command) {
     case 'setup': {
