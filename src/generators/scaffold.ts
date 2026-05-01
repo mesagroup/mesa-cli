@@ -92,6 +92,18 @@ import { render as renderViteIndexCss } from '../templates/frontend-vite/index-c
 import { render as renderViteTailwindConfig } from '../templates/frontend-vite/tailwind-config';
 import { render as renderVitePostcssConfig } from '../templates/frontend-vite/postcss-config';
 
+// Cursor rules + Claude skills (shared)
+import {
+  renderWebArchitectureRule,
+  renderSecurityRule,
+  renderTestingRule,
+} from '../templates/shared/cursor-rules';
+import {
+  renderArchitectureAuditSkill,
+  renderRestApiDesignSkill,
+  renderSecretsManagementSkill,
+} from '../templates/shared/claude-skills';
+
 // Frontend templates (shared between on-prem and SaaS)
 import { render as renderFrontendPackageJson } from '../templates/frontend/package-json';
 import { render as renderAngularJson } from '../templates/frontend/angular-json';
@@ -156,6 +168,33 @@ function addRootFiles(files: FileEntry[], config: ScaffoldConfig): void {
   files.push({ relativePath: '.claude/CLAUDE.md', content: renderProjectClaudeMd(config) });
   files.push({ relativePath: 'docs/README.md', content: renderReadme(config) });
   files.push({ relativePath: 'docs/env-vars.md', content: renderEnvVarsDoc(config) });
+  addRulesAndSkills(files);
+}
+
+/**
+ * Add cursor rules and claude skills shared across all generated project types.
+ * Called from both `addRootFiles` (monorepo / plugin layout) and the standalone
+ * Next.js full-stack branch.
+ */
+function addRulesAndSkills(files: FileEntry[]): void {
+  files.push({
+    relativePath: '.cursor/rules/web-architecture.mdc',
+    content: renderWebArchitectureRule(),
+  });
+  files.push({ relativePath: '.cursor/rules/security.mdc', content: renderSecurityRule() });
+  files.push({ relativePath: '.cursor/rules/testing.mdc', content: renderTestingRule() });
+  files.push({
+    relativePath: '.claude/skills/architecture-audit.md',
+    content: renderArchitectureAuditSkill(),
+  });
+  files.push({
+    relativePath: '.claude/skills/rest-api-design.md',
+    content: renderRestApiDesignSkill(),
+  });
+  files.push({
+    relativePath: '.claude/skills/secrets-management.md',
+    content: renderSecretsManagementSkill(),
+  });
 }
 
 function buildOnPremManifest(config: ScaffoldConfig): FileEntry[] {
@@ -325,6 +364,7 @@ function buildStandaloneManifest(config: ScaffoldConfig): FileEntry[] {
     files.push({ relativePath: '.claude/CLAUDE.md', content: renderProjectClaudeMd(config) });
     files.push({ relativePath: 'docs/README.md', content: renderReadme(config) });
     files.push({ relativePath: 'docs/env-vars.md', content: renderEnvVarsDoc(config) });
+    addRulesAndSkills(files);
 
     // Next.js full-stack — API routes handle backend, no Express
     files.push({ relativePath: 'package.json', content: renderNextjsPackageJson(config) });
