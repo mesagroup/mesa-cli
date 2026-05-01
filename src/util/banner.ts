@@ -32,18 +32,26 @@ export function shouldSuppressBanner(opts: BannerOptions = {}): boolean {
 }
 
 /**
+ * Build the banner string (without writing it). Returns an empty string when
+ * the banner is suppressed.
+ */
+export function buildBanner(opts: BannerOptions = {}): string {
+  if (shouldSuppressBanner(opts)) return '';
+
+  const colored = BANNER_LINES.map(line => chalk.cyan.bold(line)).join('\n');
+  let out = '\n' + colored + '\n';
+  if (opts.subtitle) {
+    out += chalk.dim('  ' + opts.subtitle) + '\n';
+  }
+  out += '\n';
+  return out;
+}
+
+/**
  * Print the MESA ASCII banner to stdout.
  * Honors MESA_NO_BANNER / MESA_QUIET env vars and the optional `quiet` flag.
  */
 export function printBanner(opts: BannerOptions = {}): void {
-  if (shouldSuppressBanner(opts)) return;
-
-  const colored = BANNER_LINES.map(line => chalk.cyan.bold(line)).join('\n');
-  process.stdout.write('\n' + colored + '\n');
-
-  if (opts.subtitle) {
-    process.stdout.write(chalk.dim('  ' + opts.subtitle) + '\n');
-  }
-
-  process.stdout.write('\n');
+  const out = buildBanner(opts);
+  if (out) process.stdout.write(out);
 }
