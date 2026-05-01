@@ -9,10 +9,15 @@ import {
   checkGhOrgAccess,
   isAdmin,
   canAutoInstall,
-  autoInstallTool,
+  runInstallCommand,
   checkTool,
   type ToolStatus,
 } from '../util/tool-checker';
+
+export interface SetupOptions {
+  /** Skip confirmation prompts and auto-install everything possible. */
+  yes?: boolean;
+}
 
 function printToolTable(results: ToolStatus[]): void {
   const nameWidth = Math.max(...results.map(r => r.tool.displayName.length)) + 2;
@@ -49,16 +54,42 @@ function printInstallInstructions(missing: ToolStatus[], hasAdminPrivileges: boo
       }
     } else {
       const cmd = getInstallCommand(r.tool, !hasAdminPrivileges);
-      const autoInstallAvailable = canAutoInstall(r.tool);
-      const autoNote = autoInstallAvailable ? chalk.dim(' (auto-install available)') : '';
-      console.log(`    ${chalk.cyan(cmd)}${autoNote}\n`);
+      const installable = canAutoInstall(r.tool) || cmd.length > 0;
+      const note = installable ? chalk.dim(' (will auto-install)') : '';
+      console.log(`    ${chalk.cyan(cmd || 'no install command available for this platform')}${note}\n`);
     }
   }
 }
 
-async function checkToolsLoop(): Promise<boolean> {
+async function attemptInstall(tool: ToolStatus): Promise<void> {
+  const cmd = getInstallCommand(tool.tool);
+  console.log(chalk.dim(`  Installing ${tool.tool.displayName}...`));
+  if (cmd) {
+    console.log(chalk.dim(`    $ ${cmd}`));
+  }
+
+  const success = await runInstallCommand(tool.tool);
+
+  if (success) {
+    const recheck = checkTool(tool.tool);
+    if (recheck.installed) {
+      console.log(chalk.green(`  ✓ ${tool.tool.displayName} v${recheck.version} installed\n`));
+    } else {
+      console.log(
+        chalk.yellow(
+          `  ⚠ ${tool.tool.displayName} install command completed but tool not detected. You may need to restart your shell.\n`
+        )
+      );
+    }
+  } else {
+    console.log(chalk.red(`  ✗ Failed to install ${tool.tool.displayName}\n`));
+  }
+}
+
+async function checkToolsLoop(opts: SetupOptions = {}): Promise<boolean> {
   let allGood = false;
   const hasAdminPrivileges = isAdmin();
+  const autoYes = Boolean(opts.yes);
 
   if (!hasAdminPrivileges) {
     console.log(chalk.yellow('  ℹ Running without administrator privileges'));
@@ -89,42 +120,37 @@ async function checkToolsLoop(): Promise<boolean> {
       break;
     }
 
-    const autoInstallable = missing.filter(
-      r => canAutoInstall(r.tool) && (!r.tool.requiresAdmin || hasAdminPrivileges)
+    // Tools we are willing to attempt to install: anything not gated by missing admin
+    // privileges. We try `runInstallCommand` for ALL of them, which falls back to the
+    // shell command when no typed auto-installer exists.
+    const installable = missing.filter(
+      r => !r.tool.requiresAdmin || hasAdminPrivileges
     );
 
-    if (autoInstallable.length > 0) {
-      const shouldAutoInstall = await confirm({
-        message: `Auto-install ${autoInstallable.length} tool(s) now?`,
-        default: true,
-      });
+    if (installable.length > 0) {
+      const shouldInstall = autoYes
+        ? true
+        : await confirm({
+            message: `Install ${installable.length} tool(s) now?`,
+            default: true,
+          });
 
-      if (shouldAutoInstall) {
+      if (shouldInstall) {
         console.log('');
-        for (const tool of autoInstallable) {
-          console.log(chalk.dim(`  Installing ${tool.tool.displayName}...`));
-          const success = await autoInstallTool(tool.tool);
-
-          if (success) {
-            const recheck = checkTool(tool.tool);
-            if (recheck.installed) {
-              console.log(
-                chalk.green(`  ✓ ${tool.tool.displayName} v${recheck.version} installed\n`)
-              );
-            } else {
-              console.log(
-                chalk.yellow(
-                  `  ⚠ ${tool.tool.displayName} installation completed but tool not detected. You may need to restart your terminal.\n`
-                )
-              );
-            }
-          } else {
-            console.log(chalk.red(`  ✗ Failed to install ${tool.tool.displayName}\n`));
-          }
+        for (const tool of installable) {
+          await attemptInstall(tool);
         }
 
         continue;
       }
+    }
+
+    if (autoYes) {
+      // Non-interactive run: don't loop forever; report what's still missing and exit.
+      console.log(
+        chalk.yellow('\n  Some tools could not be auto-installed. Install them manually.\n')
+      );
+      return missingRequired.length === 0;
     }
 
     const skip = await confirm({
@@ -275,11 +301,11 @@ async function handleOrgAccess(
   }
 }
 
-export async function setupCommand(): Promise<boolean> {
+export async function setupCommand(opts: SetupOptions = {}): Promise<boolean> {
   console.log(chalk.blue.bold('\n  MESA Environment Setup\n'));
 
   // Phase 1: Tool check
-  const toolsOk = await checkToolsLoop();
+  const toolsOk = await checkToolsLoop(opts);
 
   // Phase 2: Git identity
   await checkGitIdentity();

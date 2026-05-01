@@ -8,10 +8,13 @@ export interface ToolInfo {
   versionPattern?: RegExp;
   installMac: string;
   installWin: string;
+  installLinux?: string;
   installWinUserLevel?: string;
   installMacUserLevel?: string;
+  installLinuxUserLevel?: string;
   autoInstallWin?: () => Promise<boolean>;
   autoInstallMac?: () => Promise<boolean>;
+  autoInstallLinux?: () => Promise<boolean>;
   requiresAdmin?: boolean;
   adminAlternatives?: string[];
   required: boolean;
@@ -24,6 +27,8 @@ export interface ToolStatus {
 }
 
 const isWindows = process.platform === 'win32';
+const isLinux = process.platform === 'linux';
+const isMac = process.platform === 'darwin';
 
 async function installDotNetUserLevel(): Promise<boolean> {
   try {
@@ -109,9 +114,82 @@ async function installGitUserLevel(): Promise<boolean> {
         stdio: 'inherit',
         timeout: 120_000,
       });
+    } else if (isLinux) {
+      execSync('sudo apt-get update && sudo apt-get install -y git', {
+        stdio: 'inherit',
+        timeout: 300_000,
+      });
     } else {
       execSync('brew install git', { stdio: 'inherit', timeout: 120_000 });
     }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installNodeLinux(): Promise<boolean> {
+  try {
+    // Use NodeSource setup script for Node 20 LTS.
+    execSync(
+      'curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs',
+      { stdio: 'inherit', timeout: 300_000, shell: '/bin/bash' }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installGitHubCLILinux(): Promise<boolean> {
+  try {
+    execSync(
+      `(type -p wget >/dev/null || sudo apt-get install -y wget) \
+&& sudo mkdir -p -m 755 /etc/apt/keyrings \
+&& wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+&& sudo chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+&& echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+&& sudo apt-get update && sudo apt-get install -y gh`,
+      { stdio: 'inherit', timeout: 300_000, shell: '/bin/bash' }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installDockerLinux(): Promise<boolean> {
+  try {
+    execSync('curl -fsSL https://get.docker.com | sh', {
+      stdio: 'inherit',
+      timeout: 600_000,
+      shell: '/bin/bash',
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installDotNetLinux(): Promise<boolean> {
+  try {
+    execSync(
+      'curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 10.0 --install-dir $HOME/.dotnet',
+      { stdio: 'inherit', timeout: 600_000, shell: '/bin/bash' }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function installAspireLinux(): Promise<boolean> {
+  try {
+    execSync('curl -sSL https://aspire.dev/install.sh | bash', {
+      stdio: 'inherit',
+      timeout: 300_000,
+      shell: '/bin/bash',
+    });
     return true;
   } catch {
     return false;
@@ -126,10 +204,12 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /git version ([\d.]+)/,
     installMac: 'brew install git',
     installWin: 'winget install --id Git.Git',
+    installLinux: 'sudo apt-get update && sudo apt-get install -y git',
     installWinUserLevel: 'winget install --id Git.Git',
     installMacUserLevel: 'brew install git',
     autoInstallWin: installGitUserLevel,
     autoInstallMac: installGitUserLevel,
+    autoInstallLinux: installGitUserLevel,
     required: true,
   },
   {
@@ -139,12 +219,17 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /v([\d.]+)/,
     installMac: 'brew install node',
     installWin: 'winget install --id OpenJS.NodeJS.LTS',
+    installLinux:
+      'curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs',
     installWinUserLevel:
       'irm https://fnm.vercel.app/install.ps1 | iex; fnm install --lts; fnm use lts-latest',
     installMacUserLevel:
       'curl -fsSL https://fnm.vercel.app/install | bash && source ~/.bashrc && fnm install --lts && fnm use lts-latest',
+    installLinuxUserLevel:
+      'curl -fsSL https://fnm.vercel.app/install | bash && source ~/.bashrc && fnm install --lts && fnm use lts-latest',
     autoInstallWin: installNodeUserLevel,
     autoInstallMac: installNodeUserLevel,
+    autoInstallLinux: installNodeLinux,
     required: true,
   },
   {
@@ -154,10 +239,13 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /gh version ([\d.]+)/,
     installMac: 'brew install gh',
     installWin: 'winget install --id GitHub.cli',
+    installLinux:
+      'sudo apt-get update && sudo apt-get install -y gh || (curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/etc/apt/keyrings/githubcli-archive-keyring.gpg && sudo apt-get update && sudo apt-get install -y gh)',
     installWinUserLevel: 'winget install --id GitHub.cli --scope user',
     installMacUserLevel: 'brew install gh',
     autoInstallWin: installGitHubCLIUserLevel,
     autoInstallMac: installGitHubCLIUserLevel,
+    autoInstallLinux: installGitHubCLILinux,
     required: false,
   },
   {
@@ -167,13 +255,17 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /Docker version ([\d.]+)/,
     installMac: 'brew install --cask docker',
     installWin: 'winget install --id Docker.DockerDesktop',
+    installLinux: 'curl -fsSL https://get.docker.com | sh',
+    autoInstallLinux: installDockerLinux,
     requiresAdmin: true,
     adminAlternatives: [
+      'Docker is optional — only needed for projects scaffolded with local DB containers',
       'Ask your IT department to install Docker Desktop',
       'Check if Docker is available in your corporate software portal',
       'Alternative: install Podman Desktop (may work without admin): winget install RedHat.Podman-Desktop',
     ],
-    required: true,
+    // Docker is optional: many MESA workflows (SaaS, prototype with Neon) don't need it.
+    required: false,
   },
   {
     name: 'dotnet',
@@ -182,12 +274,17 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /([\d.]+)/,
     installMac: 'brew install dotnet',
     installWin: 'winget install --id Microsoft.DotNet.SDK.10',
+    installLinux:
+      'curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 10.0 --install-dir $HOME/.dotnet',
     installWinUserLevel:
       'powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-WebRequest -Uri https://dot.net/v1/dotnet-install.ps1 -OutFile dotnet-install.ps1; ./dotnet-install.ps1 -Channel 10.0 -InstallDir $HOME/.dotnet"',
     installMacUserLevel:
       'curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 10.0 --install-dir $HOME/.dotnet',
+    installLinuxUserLevel:
+      'curl -sSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 10.0 --install-dir $HOME/.dotnet',
     autoInstallWin: installDotNetUserLevel,
     autoInstallMac: installDotNetUserLevel,
+    autoInstallLinux: installDotNetLinux,
     required: false,
   },
   {
@@ -197,10 +294,13 @@ export const TOOLS: ToolInfo[] = [
     versionPattern: /([\d.]+)/,
     installMac: 'curl -sSL https://aspire.dev/install.sh | bash',
     installWin: 'irm https://aspire.dev/install.ps1 | iex',
+    installLinux: 'curl -sSL https://aspire.dev/install.sh | bash',
     installWinUserLevel: 'irm https://aspire.dev/install.ps1 | iex',
     installMacUserLevel: 'curl -sSL https://aspire.dev/install.sh | bash',
+    installLinuxUserLevel: 'curl -sSL https://aspire.dev/install.sh | bash',
     autoInstallWin: installAspireUserLevel,
     autoInstallMac: installAspireUserLevel,
+    autoInstallLinux: installAspireLinux,
     required: true,
   },
 ];
@@ -257,31 +357,76 @@ export function getInstallCommand(tool: ToolInfo, preferUserLevel = false): stri
   const hasAdmin = isAdmin();
 
   if (preferUserLevel || !hasAdmin) {
-    const userLevelCmd = isWindows ? tool.installWinUserLevel : tool.installMacUserLevel;
+    let userLevelCmd: string | undefined;
+    if (isWindows) userLevelCmd = tool.installWinUserLevel;
+    else if (isLinux) userLevelCmd = tool.installLinuxUserLevel;
+    else if (isMac) userLevelCmd = tool.installMacUserLevel;
+
     if (userLevelCmd) {
       return userLevelCmd;
     }
   }
 
-  return isWindows ? tool.installWin : tool.installMac;
+  if (isWindows) return tool.installWin;
+  if (isLinux) return tool.installLinux ?? '';
+  return tool.installMac;
 }
 
 export function getPlatformLabel(): string {
-  return isWindows ? 'Windows' : 'macOS';
+  if (isWindows) return 'Windows';
+  if (isLinux) return 'Linux';
+  return 'macOS';
 }
 
 export function canAutoInstall(tool: ToolInfo): boolean {
-  return Boolean(isWindows ? tool.autoInstallWin : tool.autoInstallMac);
+  if (isWindows) return Boolean(tool.autoInstallWin);
+  if (isLinux) return Boolean(tool.autoInstallLinux);
+  return Boolean(tool.autoInstallMac);
 }
 
 export async function autoInstallTool(tool: ToolInfo): Promise<boolean> {
-  const installer = isWindows ? tool.autoInstallWin : tool.autoInstallMac;
+  let installer: (() => Promise<boolean>) | undefined;
+  if (isWindows) installer = tool.autoInstallWin;
+  else if (isLinux) installer = tool.autoInstallLinux;
+  else if (isMac) installer = tool.autoInstallMac;
+
   if (!installer) {
     return false;
   }
 
   try {
     return await installer();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Attempt to install a tool. Tries the platform-specific auto-installer first;
+ * if absent, falls back to executing `getInstallCommand(tool)` via the system shell.
+ *
+ * Set MESA_AUTO_INSTALL=0 in the environment to force-disable shell fallback
+ * (only the typed auto-installers will run). Useful for sandboxed environments.
+ */
+export async function runInstallCommand(tool: ToolInfo): Promise<boolean> {
+  if (canAutoInstall(tool)) {
+    return autoInstallTool(tool);
+  }
+
+  if (process.env.MESA_AUTO_INSTALL === '0') {
+    return false;
+  }
+
+  const cmd = getInstallCommand(tool);
+  if (!cmd) return false;
+
+  try {
+    execSync(cmd, {
+      stdio: 'inherit',
+      timeout: 600_000,
+      shell: isWindows ? undefined : '/bin/bash',
+    });
+    return true;
   } catch {
     return false;
   }
