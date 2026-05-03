@@ -10,7 +10,7 @@ The tool automates the tedious setup of boilerplate, security patterns, infrastr
 - **Three project types**: on-premise plugin, SaaS plugin, and standalone PoC with configurable stack
 - **Environment assistant**: checks your machine for required tools and walks you through installing anything missing
 - **AI-ready**: every project ships with CLAUDE.md files that encode MESA's development rules (V1-V11), so Claude Code understands your constraints out of the box
-- **Cross-platform**: works on macOS and Windows
+- **Cross-platform**: works on macOS, Windows, and Linux
 
 ## Install
 
@@ -65,9 +65,16 @@ authentication, Vercel Blob storage, Drizzle ORM, and **manual-only** GitHub Act
 deploys (no auto-deploy on push or PR).
 
 ```bash
-mesa prototype                       # interactive wizard
-mesa prototype my-app -y             # non-interactive
+mesa prototype                                # interactive wizard
+mesa prototype my-app -y                      # non-interactive
+mesa prototype my-app -y --no-github          # skip 'gh repo create'
+mesa prototype my-app --github-org my-org     # override default GitHub org
 ```
+
+If `gh` is on PATH and you're running interactively, the wizard offers to
+create a private GitHub repo via `gh repo create <org>/<name> --source . --push`.
+Override the default org with `--github-org` or the `MESA_GITHUB_ORG` env var.
+Failures are non-fatal — the local scaffold is preserved either way.
 
 | Layer    | Technology                                  |
 | -------- | ------------------------------------------- |
