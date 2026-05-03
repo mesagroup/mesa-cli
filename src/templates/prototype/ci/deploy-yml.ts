@@ -34,7 +34,9 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      # Lockfile-agnostic: see ci.yml note. Switch to a frozen install once
+      # pnpm-lock.yaml is committed.
+      - run: pnpm install
 
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
@@ -65,7 +67,9 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      # Lockfile-agnostic: see ci.yml note. Switch to a frozen install once
+      # pnpm-lock.yaml is committed.
+      - run: pnpm install
 
       - name: Install Vercel CLI
         run: npm i -g vercel@latest

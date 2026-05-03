@@ -25,7 +25,10 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      # Lockfile-agnostic: scaffolded repos may not yet have pnpm-lock.yaml
+      # committed. Once you commit the lockfile, switch to a frozen install
+      # for reproducible CI.
+      - run: pnpm install
 
       - name: Build
         run: pnpm build

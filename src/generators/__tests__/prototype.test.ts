@@ -101,6 +101,32 @@ describe('prototype scaffold', () => {
     expect(deployYml).toContain('environment: production');
   });
 
+  it('CI workflows are lockfile-agnostic (no --frozen-lockfile before initial commit)', async () => {
+    // Regression test for the 8797 lesson: a freshly scaffolded prototype has
+    // no committed lockfile, so 'pnpm install --frozen-lockfile' breaks the
+    // first push to main / first deploy.
+    const outputDir = makeTmpDir();
+    dirs.push(outputDir);
+
+    await scaffoldPrototype({
+      name: 'my-proto',
+      className: 'MyProto',
+      description: 'test',
+      author: 'tester',
+      outputDir,
+    });
+
+    const ci = readFileSync(join(outputDir, '.github/workflows/ci.yml'), 'utf8');
+    const deploy = readFileSync(join(outputDir, '.github/workflows/deploy.yml'), 'utf8');
+    const vercel = readFileSync(join(outputDir, 'vercel.json'), 'utf8');
+
+    expect(ci).toContain('pnpm install');
+    expect(ci).not.toMatch(/pnpm install\s+--frozen-lockfile/);
+    expect(deploy).toContain('pnpm install');
+    expect(deploy).not.toMatch(/pnpm install\s+--frozen-lockfile/);
+    expect(vercel).not.toMatch(/--frozen-lockfile/);
+  });
+
   it('schema.ts has users table with passwordHash', async () => {
     const outputDir = makeTmpDir();
     dirs.push(outputDir);
