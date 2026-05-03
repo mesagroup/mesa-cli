@@ -405,17 +405,30 @@ export async function autoInstallTool(tool: ToolInfo): Promise<boolean> {
  * Attempt to install a tool. Tries the platform-specific auto-installer first;
  * if absent, falls back to executing `getInstallCommand(tool)` via the system shell.
  *
- * Set MESA_AUTO_INSTALL=0 in the environment to force-disable shell fallback
- * (only the typed auto-installers will run). Useful for sandboxed environments.
+ * Shell fallback can `curl … | sudo bash` (Docker / .NET / Aspire on Linux),
+ * which is too aggressive for unattended runs. Behavior:
+ *
+ * - Interactive (TTY): typed auto-installer first, shell-command fallback
+ *   second. The user already saw the install command and confirmed.
+ * - Non-interactive: typed auto-installer only. Shell fallback requires
+ *   explicit `MESA_AUTO_INSTALL=1` in the environment.
+ *
+ * Set `MESA_AUTO_INSTALL=0` to force-disable shell fallback even when interactive
+ * (useful for sandboxed environments).
  */
 export async function runInstallCommand(tool: ToolInfo): Promise<boolean> {
   if (canAutoInstall(tool)) {
     return autoInstallTool(tool);
   }
 
-  if (process.env.MESA_AUTO_INSTALL === '0') {
-    return false;
-  }
+  // Shell fallback: arbitrary `sudo`/`curl|bash` commands. Default behavior
+  // depends on whether stdin is a TTY.
+  const isInteractive = process.stdin.isTTY === true;
+  const explicitOptIn = process.env.MESA_AUTO_INSTALL === '1';
+  const explicitOptOut = process.env.MESA_AUTO_INSTALL === '0';
+
+  if (explicitOptOut) return false;
+  if (!isInteractive && !explicitOptIn) return false;
 
   const cmd = getInstallCommand(tool);
   if (!cmd) return false;

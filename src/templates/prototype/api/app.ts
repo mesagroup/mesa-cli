@@ -11,11 +11,21 @@ import { uploads } from './routes/uploads';
 
 export const app = new Hono().basePath('/api');
 
+// Comma-separated list of allowed origins. Default: same-origin only.
+// Example: CORS_ALLOW_ORIGINS=https://app.example.com,https://staging.example.com
+const allowList = (process.env.CORS_ALLOW_ORIGINS ?? '')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 app.use('*', logger());
 app.use(
   '*',
   cors({
-    origin: (origin) => origin ?? '*',
+    origin: (origin) => {
+      if (!origin) return null; // Same-origin requests have no Origin header.
+      return allowList.includes(origin) ? origin : null;
+    },
     credentials: true,
   }),
 );

@@ -8,10 +8,12 @@ export function render(config: PrototypeConfig): string {
 
 async function getHealth(): Promise<HealthStatus> {
   try {
-    const res = await fetch(
-      \`\${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'}/api/health\`,
-      { cache: 'no-store' },
-    );
+    // Use absolute URL during SSR (server-side fetch needs a host); use a
+    // relative URL in the browser. NEXT_PUBLIC_API_URL overrides for splits.
+    const baseUrl =
+      process.env.NEXT_PUBLIC_API_URL ?? \`http://localhost:\${process.env.PORT ?? '3000'}\`;
+    const url = typeof window === 'undefined' ? \`\${baseUrl}/api/health\` : '/api/health';
+    const res = await fetch(url, { cache: 'no-store' });
     return (await res.json()) as HealthStatus;
   } catch {
     return { status: 'error', db: 'unreachable' };
