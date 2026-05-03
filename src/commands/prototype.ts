@@ -6,12 +6,17 @@ import chalk from 'chalk';
 import { toKebabCase, toPascalCase, validatePluginName } from '../util/naming';
 import { generateFancyName } from '../util/name-generator';
 import { scaffoldPrototype, type PrototypeConfig } from '../generators/prototype-scaffold';
+import { maybeCreateGithubRepo } from '../util/github-repo';
 
 export interface PrototypeFlags {
   author?: string;
   description?: string;
   dryRun?: boolean;
   yes?: boolean;
+  /** Skip the optional `gh repo create` step entirely. */
+  noGithub?: boolean;
+  /** Default GitHub org for repo creation prompt. */
+  githubOrg?: string;
 }
 
 const isInteractive = () => process.stdin.isTTY === true;
@@ -114,6 +119,11 @@ export async function prototypeCommand(
   }
 
   await scaffoldPrototype(config);
+
+  await maybeCreateGithubRepo(outputDir, projectName, {
+    skip: flags.noGithub,
+    defaultOrg: flags.githubOrg,
+  });
 
   // Next steps.
   console.log(chalk.blue.bold('  Next steps:\n'));

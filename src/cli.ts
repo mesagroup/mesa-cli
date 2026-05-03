@@ -55,6 +55,8 @@ const cli = meow(
     --author       Author name (default: git config user.name)
     --description  Project description
     --dry-run      Show what would be created without writing files
+    --no-github    Skip the optional 'gh repo create' step
+    --github-org   Default GitHub organization (env: MESA_GITHUB_ORG)
     -y, --yes      Skip prompts, use defaults
 
   Verify Options
@@ -90,6 +92,8 @@ const cli = meow(
       json: { type: 'boolean', default: false },
       explain: { type: 'boolean', default: false },
       quiet: { type: 'boolean', default: false },
+      github: { type: 'boolean', default: true },
+      githubOrg: { type: 'string' },
     },
   }
 );
@@ -129,6 +133,8 @@ async function main() {
         description: cli.flags.description,
         dryRun: cli.flags.dryRun,
         yes: cli.flags.yes,
+        noGithub: !cli.flags.github,
+        githubOrg: cli.flags.githubOrg,
       });
       break;
     }
