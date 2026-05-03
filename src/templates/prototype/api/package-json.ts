@@ -26,6 +26,9 @@ export function render(config: PrototypeConfig): string {
         jose: '^5.9.6',
         bcryptjs: '^2.4.3',
         '@vercel/blob': '^0.27.0',
+        // drizzle-orm is re-exported from @<name>/db for shared types/queries
+        // (e.g. eq, sql), so apps/api needs it as a direct dep too.
+        'drizzle-orm': '^0.36.4',
         [`@${config.name}/db`]: 'workspace:*',
       },
       devDependencies: {
