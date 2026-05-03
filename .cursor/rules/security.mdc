@@ -1,0 +1,49 @@
+---
+description: MESA security & secrets management rules (mirror of templates/shared/cursor-rules.ts)
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# Security rules
+
+## Authentication
+
+- Username/email + password is the default credential model.
+- Passwords are stored only as **bcrypt** (`bcryptjs`) or **argon2** hashes. Never plaintext.
+  Salt rounds: bcrypt `>= 10`, argon2 with default params.
+- JWT signed with `jose` using HS256 (shared secret) or RS256 (key pair).
+  Validate `iss`, `aud`, and `exp` on every request.
+- Auth middleware protects every route except `/api/health` and `/api/auth/*`.
+
+## Secrets
+
+- Never commit `.env`. Only `.env.example` is tracked.
+- Store secrets in:
+  - **GitHub Secrets** (per environment) for CI/CD.
+  - **Vercel env vars** (per environment: production / preview / development) for runtime.
+- Never log tokens, passwords, or PII.
+
+## Input validation
+
+- All external input (request body, query, headers, env vars) is validated with **Zod**.
+- Reject invalid input with a clear 400 response (no stack trace).
+
+## Database
+
+- Use parameterized queries or an ORM (Drizzle / Prisma). **Never** string-concatenate
+  user input into SQL.
+
+## OWASP top-10 (short list)
+
+- A01 Broken access control — auth middleware on every protected route.
+- A02 Cryptographic failures — bcrypt/argon2 for passwords, HTTPS in production.
+- A03 Injection — parameterized queries, Zod for input validation.
+- A05 Security misconfiguration — `helmet()` defaults, CORS whitelist.
+- A07 Auth failures — rate-limit `/api/auth/login`, lock after N attempts.
+- A08 Software/data integrity — `pnpm install --frozen-lockfile` in CI.
+
+## Errors
+
+- Centralized error handler. Return `{ error: "<short message>" }` to clients.
+  Log details internally. Never return `err.message` or stack traces.
