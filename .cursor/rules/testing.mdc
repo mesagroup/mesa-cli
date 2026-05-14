@@ -1,0 +1,39 @@
+---
+description: MESA testing rules — vitest conventions, test pyramid
+globs:
+  - "**/*.{test,spec}.{ts,tsx,js,jsx}"
+alwaysApply: false
+---
+
+# Testing rules
+
+## Frameworks
+
+- **Vitest** for unit + integration tests (already used in this repo).
+- **Hono test client** (`app.request(...)`) for API integration tests.
+- **Playwright** for end-to-end browser tests (when needed).
+
+## Pyramid
+
+- Lots of fast unit tests for pure functions (services, validators).
+- Integration tests for routes (auth + happy + error paths).
+- A handful of E2E tests for critical user journeys.
+
+## Conventions
+
+- Test files are co-located: `foo.ts` ↔ `foo.test.ts`, OR under `__tests__/`.
+- Each test is independent: no shared mutable state between tests.
+- Use `beforeEach` to reset fixtures, `afterEach` to clean up temp files.
+- For DB tests, use a separate Neon branch (Neon supports cheap branching).
+
+## Required coverage for new endpoints
+
+- 200 happy, 400 validation, 401 unauthenticated, 403 forbidden, 404 not found.
+- Auth routes: `/register` happy, duplicate username (409), weak password (400),
+  `/login` correct, `/login` wrong password (401), expired JWT (401).
+
+## Anti-patterns
+
+- No `it.skip` or `it.todo` left in `main`.
+- No assertions on `console.log` output.
+- No tests that depend on wall-clock time without freezing it.

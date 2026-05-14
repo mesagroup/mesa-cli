@@ -3,7 +3,10 @@ import chalk from 'chalk';
 import dotenv from 'dotenv';
 import { initCommand } from './commands/init';
 import { setupCommand } from './commands/setup';
+import { prototypeCommand } from './commands/prototype';
+import { verifyCommand } from './commands/verify';
 import { isFirstRun, markSetupDone } from './util/first-run';
+import { printBanner } from './util/banner';
 
 dotenv.config();
 
@@ -12,18 +15,33 @@ if (process.argv.includes('-v')) {
   process.argv[process.argv.indexOf('-v')] = '--version';
 }
 
+// Show the banner before meow takes over (meow exits on --help/--version,
+// and we want users to see MESA on those invocations too).
+const earlyQuiet =
+  process.argv.includes('--quiet') ||
+  process.argv.includes('--version') ||
+  process.argv.includes('-v');
+const cmdArg = process.argv.slice(2).find(a => !a.startsWith('-'));
+const isJsonVerifyEarly = cmdArg === 'verify' && process.argv.includes('--json');
+if (!isJsonVerifyEarly) {
+  printBanner({ quiet: earlyQuiet, subtitle: 'Scaffolder & architecture toolkit' });
+}
+
 const cli = meow(
   `
   Usage
     $ mesa <command> [options]
 
   Commands
-    init     Scaffold a new MESAPPA plugin or standalone PoC project
-    setup    Check and install required development tools
-    login    Login to your account and obtain an auth token
+    init       Scaffold a new MESAPPA plugin or standalone PoC project
+    prototype  Scaffold a Vercel + Next.js + Hono + Neon prototype monorepo
+    verify     Audit a project against MESA architecture best practices
+    setup      Check and install required development tools
+    login      Login to your account and obtain an auth token
 
   Options
     -v, --version  Show version number
+    --quiet        Suppress the MESA banner
 
   Init Options
     --type         Project type: onprem, saas, or standalone (default: onprem)
@@ -33,13 +51,31 @@ const cli = meow(
     --dry-run      Show what would be created without writing files
     -y, --yes      Skip prompts, use defaults
 
+  Prototype Options
+    --author       Author name (default: git config user.name)
+    --description  Project description
+    --dry-run      Show what would be created without writing files
+    --no-github    Skip the optional 'gh repo create' step
+    --github-org   Default GitHub organization (env: MESA_GITHUB_ORG)
+    -y, --yes      Skip prompts, use defaults
+
+  Verify Options
+    --cwd <dir>    Directory to verify (defaults to current working directory)
+    --json         Emit machine-readable JSON (suppresses banner)
+    --explain      Print the matched evidence for each check
+
   Login Options
     --tenant-id    The tenant ID to use for the login
+
+  Setup Options
+    -y, --yes      Auto-install missing tools without prompting
 
   Examples
     $ mesa init
     $ mesa init my-plugin --no-frontend
-    $ mesa setup
+    $ mesa prototype my-app -y
+    $ mesa verify --cwd ./my-app
+    $ mesa setup -y
     $ mesa login --tenant-id=mesappa
 `,
   {
@@ -52,6 +88,12 @@ const cli = meow(
       description: { type: 'string' },
       dryRun: { type: 'boolean', default: false },
       yes: { type: 'boolean', shortFlag: 'y', default: false },
+      cwd: { type: 'string' },
+      json: { type: 'boolean', default: false },
+      explain: { type: 'boolean', default: false },
+      quiet: { type: 'boolean', default: false },
+      github: { type: 'boolean', default: true },
+      githubOrg: { type: 'string' },
     },
   }
 );
@@ -61,7 +103,7 @@ async function main() {
 
   switch (command) {
     case 'setup': {
-      await setupCommand();
+      await setupCommand({ yes: cli.flags.yes });
       markSetupDone();
       break;
     }
@@ -70,7 +112,7 @@ async function main() {
       // First-run: auto-run setup before init
       if (isFirstRun() && process.stdin.isTTY) {
         console.log(chalk.blue('  First run detected — checking environment...\n'));
-        await setupCommand();
+        await setupCommand({ yes: cli.flags.yes });
         markSetupDone();
       }
 
@@ -82,6 +124,28 @@ async function main() {
         dryRun: cli.flags.dryRun,
         yes: cli.flags.yes,
       });
+      break;
+    }
+
+    case 'prototype': {
+      await prototypeCommand(args[0], {
+        author: cli.flags.author,
+        description: cli.flags.description,
+        dryRun: cli.flags.dryRun,
+        yes: cli.flags.yes,
+        noGithub: !cli.flags.github,
+        githubOrg: cli.flags.githubOrg,
+      });
+      break;
+    }
+
+    case 'verify': {
+      const exitCode = await verifyCommand({
+        cwd: cli.flags.cwd,
+        json: cli.flags.json,
+        explain: cli.flags.explain,
+      });
+      process.exit(exitCode);
       break;
     }
 
