@@ -19,9 +19,11 @@ il lock architetturale dovra' diventare piu' prescrittivo.
 ## Documenti
 
 1. [Linea guida AF per prototipazione vibecoded](./01-linea-guida-af-prototipazione.md)
-2. [Linea guida dev per industrializzazione](./02-linea-guida-dev-industrializzazione.md)
-3. [Ridefinizione scaffold e architecture lock](./03-scaffold-architecture-lock.md)
-4. [Skills e documentazione da inserire negli scaffold](./04-skills-documentazione-scaffold.md)
+2. [Ridefinizione scaffold e architecture lock](./03-scaffold-architecture-lock.md)
+3. [Skills e documentazione da inserire negli scaffold](./04-skills-documentazione-scaffold.md)
+
+Le linee guida operative per il dev (processo di industrializzazione, analisi
+del dominio, skill associate) si trovano in [../guidelines-dev/](../guidelines-dev/README.md).
 
 ## Principi comuni
 
