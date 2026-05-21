@@ -1,6 +1,6 @@
 # Processo di industrializzazione
 
-Stato: bozza v0.3. Audience: dev di ingegnerizzazione, dev di prototipazione,
+Stato: bozza v0.4. Audience: dev di ingegnerizzazione, dev di prototipazione,
 AF, Tester funzionale e AET.
 
 ## Obiettivo
@@ -47,10 +47,14 @@ Nelle prime 24-48 ore il dev fa una review tecnica esplicita:
    successiva) e annota il delta su ogni traccia;
 6. identifica decisioni strutturali da portare ad AET;
 7. apre o aggiorna ADR per le decisioni non banali e per le eventuali
-   deroghe al target.
+   deroghe al target;
+8. verifica presenza e coerenza di `docs/adr/`, `turbo.json` e layout
+   monorepo `apps/` + `packages/`.
 
 La review produce una lista breve di issue tecniche prioritarie, non una
-riscrittura preventiva del prototipo.
+riscrittura preventiva del prototipo. Il passo successivo pianificato e' la
+mappatura entity (agent) e, in parallelo o subito dopo, la discovery dominio se
+non ancora fatta.
 
 ## Stato di partenza dal prototipo
 
@@ -105,6 +109,127 @@ controlli compensativi (segreti, observability, rollback).
 Il lock architetturale di scaffold (livelli L0/L1/L2) e' descritto in
 `docs/sat/03-scaffold-architecture-lock.md`. Questa guida lo applica al
 passaggio prototipo -> prodotto.
+
+## Metodologie: dal prototipo al repository
+
+Il passaggio prototipo -> repo industrializzato non e' un solo refactor: e' una
+sequenza di fasi con artefatti e gate espliciti. Le metodologie dettagliate
+(perimetro repo, branch strategy, migrazione env, handover AF->dev) saranno
+approfondite in un documento dedicato; qui si fissa il perimetro minimo che ogni
+prodotto deve rispettare.
+
+| Fase | Obiettivo | Output minimo |
+| --- | --- | --- |
+| **Presa in carico** | Validare che il prototipo e' industrializzabile | `docs/industrialization-review.md`, backlog P0/P1/P2 |
+| **Discovery dominio** | Stabilire confini prima del codice di produzione | `docs/domain-map.md` |
+| **Mappatura tecnica** | Tradurre dominio e codice esistente in entity, dipendenze, superfici UI/API | `docs/entity-map.md`, `docs/dependency-map.md` (vedi sezione attivita' pratiche) |
+| **Convergenza architetturale** | Allineare repo al target (monorepo, moduli, ORM, observability) | PR incrementali per traccia, ADR per deviazioni |
+| **Hardening qualita'** | Test, architettura verificabile, operabilita' | coverage su AC, `dependency-cruiser` verde, trace su App Insights |
+| **Rilascio** | Prodotto rilasciabile e documentato | DoD industrializzazione, changelog, runbook |
+
+Principi trasversali:
+
+- **Incrementale**: niente big-bang; ogni PR ha uno scopo (un modulo, una traccia,
+  un package).
+- **Documentato prima di strutturare**: entity map e dependency map precedono
+  estrazioni di moduli e split di package.
+- **Tracciato**: ogni deviazione dal target produce o aggiorna un ADR; ogni
+  decisione strutturale cross-SAT passa da AET.
+
+## Organizzazione del repository (monorepo + Turborepo)
+
+Il prodotto industrializzato e' un **monorepo pnpm** orchestrato da
+**Turborepo**. Il prototipo `mesa prototype` gia' nasce con `apps/` e
+`packages/`; l'industrializzazione consolida questa forma e aggiunge pipeline,
+cache e task graph espliciti.
+
+Layout di riferimento:
+
+```
+<repo>/
+  apps/
+    web/          # Next.js BFF (Auth.js, proxy verso API)
+    api/          # Hono API host (moduli business)
+    worker/       # (opzionale) consumer Outbox/Inbox, job async
+  packages/
+    db/           # Drizzle schema, client, migrazioni
+    shared-<ctx>/ # Shared Kernel: solo tipi/VO, mai logica business
+    platform/     # (opzionale) auth helpers, telemetry, error mapping
+  docs/
+    adr/
+    domain-map.md
+    entity-map.md
+    dependency-map.md
+  turbo.json
+  pnpm-workspace.yaml
+```
+
+Regole monorepo:
+
+- **Confini tra package**: un modulo business vive in `apps/api/src/modules/<ctx>/`;
+  i package in `packages/` espongono contratti stabili (DB, tipi condivisi,
+  adapter platform). Niente import circolari tra `apps/*`.
+- **Turborepo**: `turbo.json` definisce `build`, `lint`, `test`, `typecheck` con
+  `dependsOn: ["^build"]` dove serve; la CI invoca `turbo run <task> --filter=...`
+  per evitare build inutili su PR mirate.
+- **Workspace pnpm**: dipendenze interne con `workspace:*`; versioni esterne
+  allineate dalla root (`pnpm.overrides` solo se motivato in ADR).
+- **Evoluzione dal prototipo**: Hono montato in Next.js (`apps/web/.../api/`)
+  va estratto verso `apps/api` come processo separato; fino al completamento
+  l'estrazione resta tracciata nel backlog e negli ADR.
+
+## Documentazione e ADR
+
+Oltre al codice, il repo industrializzato mantiene documentazione viva e
+decisioni architetturali strutturate.
+
+### Struttura documentale minima
+
+| Percorso | Contenuto | Chi aggiorna |
+| --- | --- | --- |
+| `README.md` | Avvio locale, comandi turbo/pnpm, env | Dev |
+| `docs/product-brief.md` | Visione prodotto, scope | AF / PO |
+| `docs/architecture.md` | Vista corrente (moduli, deploy, integrazioni) | Dev |
+| `docs/domain-map.md` | Bounded context, ubiquitous language, context map | Dev + AF |
+| `docs/entity-map.md` | Entity aggregate, mapping FE/BE | Dev (con agent) |
+| `docs/dependency-map.md` | Grafo dipendenze da entity map | Dev |
+| `docs/functional-manual.md` | Manuale funzionale per tester | AF |
+| `docs/handover-to-industrialization.md` | Debito, rischi, env | AF → dev |
+| `docs/industrialization-review.md` | Review 24-48h | Dev |
+| `docs/runbook.md` | Deploy, rollback, segreti, debug | Dev |
+| `docs/adr/` | Architecture Decision Records | Dev + AET |
+
+### Formato ADR
+
+Ogni ADR in `docs/adr/NNNN-titolo-kebab-case.md` segue il template:
+
+```markdown
+# NNNN — Titolo decisione
+
+Stato: proposta | accettata | deprecata | sostituita da ADR-XXXX
+Data: YYYY-MM-DD
+Decisori: dev, AET (se applicabile)
+
+## Contesto
+Cosa obbliga la decisione.
+
+## Decisione
+Cosa si fa.
+
+## Conseguenze
+Positive, negative, controlli compensativi.
+
+## Alternative considerate
+Breve elenco con motivo dello scarto.
+```
+
+Regole ADR:
+
+- **0001** resta la decisione architetturale iniziale (scaffold / target);
+- ogni deviazione dal target (Vercel, auth prototipo, storage, deploy) richiede
+  ADR **accettata** da AET prima del merge in produzione;
+- ADR deprecati restano in repo con stato `deprecata` e link alla sostituta;
+- riferimenti incrociati in issue e PR (`ADR-0003` nel titolo o body).
 
 ## Analisi del dominio
 
@@ -260,6 +385,10 @@ multi-provider).
 
 ### Test
 
+L'industrializzazione richiede una **valangata di test** il piu' esaustiva
+possibile rispetto agli Acceptance Criteria e alla entity map: non solo happy
+path, ma varianti, errori, autorizzazione e regressioni sui flussi critici.
+
 - Vitest come test framework unico per unit e integration, backend e
   frontend.
 - Playwright per E2E, accessibility (axe), visual regression e perf sui
@@ -268,28 +397,149 @@ multi-provider).
   base per gli integration test che toccano infrastruttura reale.
 - `dependency-cruiser` come architecture test, eseguito in CI come
   quality gate (regole esagonali intra-modulo e inter-package).
-- Coverage minima da pretendere su ogni issue:
-  - unit per le regole di business pure;
-  - integration per ogni route principale (happy path, validazione,
-    autorizzazione, errore di dominio, errore tecnico);
-  - E2E o manuale tracciato sui journey critici.
+- Priorita' di copertura (in ordine):
+  1. **Unit** — regole di dominio pure, value object, policy, mapper senza I/O;
+  2. **Integration** — ogni route/command principale: happy path, validazione
+     input, 401/403, errore dominio (`Result` -> Problem Details), errore
+     tecnico, idempotenza dove prevista;
+  3. **E2E** — journey end-to-end da entity map + AC (creazione, modifica,
+     errore utente, permessi insufficienti, flussi multi-step);
+  4. **Architettura** — `dependency-cruiser` + eventuali contract test tra
+     moduli (OpenAPI / event schema).
+- Ogni entity identificata in `docs/entity-map.md` deve avere almeno un test
+  unit o integration che ne esercita il comportamento core; ogni pagina o
+  componente FE mappato deve comparire in almeno uno scenario Playwright se
+  espone comportamento utente rilevante.
 - Nessuna issue passa a done se gli Acceptance Criteria non hanno
   evidenza di test, anche manuale.
 
-### Operabilita'
+### Operabilita' e tracing (Application Insights)
 
 - Health endpoint sempre presente; readiness/liveness separate per i
   container in Azure Container Apps.
 - Logging strutturato (JSON) senza token, password o PII; correlation ID
   propagato attraverso il mediator e nei log dei worker.
-- Observability via OpenTelemetry Node SDK (log, metriche, tracing) come
-  default piattaforma; export configurato per ambiente (es. App Insights,
-  collector OTLP).
+- Observability via **OpenTelemetry Node SDK** (log, metriche, tracing) come
+  default piattaforma; export verso **Azure Application Insights** in
+  preview e production (collector OTLP in dev locale se utile).
+- Le **trace** su App Insights vanno gestite come requisito di prodotto, non
+  come optional post-rilascio:
+  - instrumentazione OTel su `apps/web`, `apps/api` e `apps/worker` con
+    resource attributes coerenti (`service.name`, `deployment.environment`);
+  - propagazione del **trace context** (W3C `traceparent`) dal BFF alle
+    chiamate server-to-server verso Hono;
+  - span per use case nel mediator (nome = comando/query), span per
+    chiamate DB e integrazioni esterne;
+  - **correlation ID** allineato tra log strutturati e trace (stesso ID in
+    entrambi i canali);
+  - sampling configurato per ambiente (100% in preview, campionamento in
+    prod se il volume lo richiede — decisione in ADR);
+  - dashboard o workbook minimo: latenza p95 per route critiche, error rate,
+    dipendenze esterne; alert su SLO concordati con AF.
 - Runbook minimo per: avvio locale (con `.NET Aspire` se usato come
   orchestratore di sviluppo), deploy, rollback, debug env, rotazione
-  segreti, ripristino DB.
+  segreti, ripristino DB, **verifica trace** (come trovare una richiesta per
+  correlation ID in App Insights).
 - Errori ricorrenti e debito operativo trasformati in issue, con priorita'
   e owner. Niente knowledge solo orale.
+
+## Attivita' pratiche di ingegnerizzazione
+
+Questa sezione traduce il processo in lavoro operativo sul repo. L'ordine e'
+vincolante: la mappatura tecnica precede refactor strutturali; l'analisi delle
+dipendenze precede split di package e moduli.
+
+### 1. Prima spazzolata: analisi codebase con agent
+
+Prima di toccare l'architettura target, eseguire una **passata guidata da agent**
+(Cursor/Claude) sulla codebase e sulla documentazione gia' presente (brief,
+issue, `domain-map.md` se esiste).
+
+**Backend** — produrre `docs/entity-map.md` (sezione BE):
+
+- entita' e aggregati impliciti nel codice (modelli, tabelle, DTO, servizi);
+- use case / endpoint che le manipolano;
+- servizi, controller/route, accesso dati attuale (query inline vs repository);
+- debito: SQL nel service, logica nei route handler, accoppiamenti cross-layer.
+
+**Frontend** — produrre la stessa sezione in `docs/entity-map.md` (FE):
+
+- entita' di dominio come compaiono in UI (stato, form, liste);
+- **mapping entity -> pagine** (`apps/web/src/app/...`) e **entity -> componenti**
+  riusabili;
+- chiamate API per entity (quali route, quali payload);
+- stato locale vs server state; permessi UI se visibili.
+
+**Merge** — unire FE e BE in un unico `docs/entity-map.md` con tabella di
+allineamento:
+
+| Entity (ubiquitous language) | Modulo / schema BE | Route API | Pagina / componente FE | Note |
+| --- | --- | --- | --- | --- |
+
+Disallineamenti di naming (es. `Order` in BE, `Purchase` in FE) diventano
+issue o aggiornamento del glossario in `domain-map.md`.
+
+### 2. Analisi interdipendenze
+
+Da `entity-map.md` derivare `docs/dependency-map.md`:
+
+- grafo **modulo → modulo** e **package → package** (import, chiamate HTTP,
+  condivisione tabelle o tipi);
+- dipendenze **FE -> API** per flusso;
+- dipendenze **vietate** rispetto al target (es. `domain/` che importa
+  `infrastructure/`, join cross-schema, shared package con logica business).
+
+Output: elenco dipendenze da **rompere**, **invertire** (port/adapter) o
+**formalizzare** (Published Language, ACL, integration event).
+
+### 3. Separazione delle dipendenze
+
+Sulla base di `dependency-map.md` e del `domain-map.md`:
+
+1. identificare **cicli** e accoppiamenti forti tra contesti;
+2. proporre confini package (`apps/api/src/modules/<ctx>/`, `packages/db`
+   per schema, `packages/shared-*` solo per tipi);
+3. pianificare PR che introducono Port, ACL o eventi senza big-bang;
+4. aggiornare `dependency-cruiser` con regole che rendono le violazioni
+   build-breaking.
+
+### 4. Backend: servizi, controlli e ORM
+
+Per ogni bounded context nel BE:
+
+- **Struttura target**: `endpoints/` (adapter driving) → `application/` (use
+  case) → `domain/` (entita', Port) → `infrastructure/` (adapter Drizzle);
+- **Servizi prototipo**: classificare in tenere / rifattorizzare / spezzare in
+  command-handler; niente logica nuova nei "service" monolitici;
+- **ORM (Drizzle)**: tutte le query escono dagli handler e dai service verso
+  **repository** che implementano i Port di dominio; il client Drizzle non e'
+  importato in `application/` ne' in `endpoints/`;
+- migrazioni per schema del modulo in `packages/db` o sotto-cartella dedicata,
+  allineate a schema-per-modulo.
+
+### 5. Regola bounded context vs codice trasversale
+
+- **Dentro il bounded context**: codice di dominio, use case, adapter verso il
+  DB del modulo, endpoint del modulo. E' il posto giusto per la logica business.
+- **Fuori dal modulo, in servizi gestiti (platform)**: auth, telemetry,
+  correlation, audit, rate limit, mapping errori globali, client verso Key
+  Vault/Blob/Service Bus generici. Vivono in `packages/platform/` o middleware
+  condivisi, **non** duplicati in ogni modulo.
+- **Fuori dal dominio del prodotto**: integrazioni portfolio (es. SEASYDE) solo
+  tramite ACL in `infrastructure/` del modulo consumatore.
+
+Violazioni tipiche da correggere in industrializzazione: query SQL nel service
+del prototipo, helper "utils" condivisi che contengono regole di business,
+componenti FE che chiamano API di altri contesti senza passare dal BFF/contratto.
+
+### 6. Test esaustivi (esecuzione)
+
+Dopo entity map e dependency map:
+
+- generare/estendere test unit per ogni regola di dominio emersa;
+- integration per ogni endpoint mappato;
+- E2E Playwright per ogni journey critico dalla tabella entity (FE+BE);
+- tracciare gap di copertura in issue collegate agli AC.
 
 ## Collaborazione nel SAT
 
@@ -313,27 +563,34 @@ Una feature o un incremento e' industrializzato quando:
 
 - gli Acceptance Criteria sono soddisfatti;
 - test automatici (Vitest/Playwright) o manuali sono tracciati con
-  evidenza;
-- build, lint, test e `dependency-cruiser` passano;
+  evidenza; copertura allineata a `entity-map.md` per le entity toccate;
+- build, lint, test (`turbo run`) e `dependency-cruiser` passano;
 - `mesa verify` passa o le eccezioni sono motivate;
 - env e segreti sono documentati correttamente (con scoping per ambiente
   e riferimento al secret store target);
 - migrazioni `drizzle-kit` sono versionate, provate su preview e descritte
   nel runbook;
-- README, runbook e manuale funzionale sono aggiornati;
+- trace visibili in Application Insights per i flussi modificati (span con
+  correlation ID verificabile);
+- README, runbook, `entity-map.md` / `dependency-map.md` (se impattati) e
+  manuale funzionale sono aggiornati;
 - gli ADR sono aggiornati per ogni deviazione dal target architetturale di riferimento;
 - debito residuo e' scritto in issue, con priorita' e owner.
 
 ## Anti-pattern
 
 - Riscrivere tutto prima di aver misurato il debito reale.
+- Saltare entity map / dependency map e rifattorizzare "a istinto" i package.
 - Accettare scelte del prototipo come architettura di produzione senza
   ADR di deroga (auth `bcryptjs+jose`, Hono in Next.js, Vercel Blob,
   deploy Vercel).
-- Mettere logica business negli endpoint Hono o nei Route Handler
-  Next.js invece che in `application/`.
-- Accedere al client Drizzle dagli handler invece che attraverso il
-  repository di dominio.
+- Mettere logica business negli endpoint Hono, nei Route Handler Next.js o
+  in `packages/platform/` invece che nel modulo del bounded context.
+- Accedere al client Drizzle o SQL raw dai service/handler invece che
+  attraverso repository su Port di dominio.
+- Duplicare middleware di tracing o auth in ogni modulo invece di usare
+  servizi platform condivisi.
+- Rilasciare in production senza trace OTel -> App Insights sui flussi critici.
 - Aprire PR grandi che mischiano refactor, feature e migrazioni.
 - Usare AET come code review ordinaria.
 - Mettere deploy, env o segreti "a mano" senza documentazione ne'
@@ -342,4 +599,5 @@ Una feature o un incremento e' industrializzato quando:
   previsto.
 - Introdurre uno strato strutturale nuovo (auth, messaging, persistence,
   deploy) senza ADR e senza confronto con il target architetturale di riferimento.
+- ADR solo in chat o in issue senza file in `docs/adr/`.
 

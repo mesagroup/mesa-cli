@@ -1,6 +1,6 @@
 # Guidelines dev
 
-Stato: bozza v0.2, 2026-05-15. Audience: dev di ingegnerizzazione, AET.
+Stato: bozza v0.3, 2026-05-21. Audience: dev di ingegnerizzazione, AET.
 
 Linee guida operative per il dev che prende in carico un prototipo `mesa
 prototype` e lo trasforma in prodotto industrializzato standalone.
@@ -14,10 +14,12 @@ Hai ricevuto un prototipo da industrializzare. Leggi nei prossimi 30 minuti, in
 quest'ordine:
 
 1. **[Processo di industrializzazione](./01-processo-industrializzazione.md)** —
-   Il flusso completo: input atteso, review iniziale 24-48h, analisi del
-   dominio, tracce di ingegnerizzazione (architettura, dati, sicurezza, deploy,
-   test, operabilita'), Definition of Done, anti-pattern. **Tienilo aperto come
-   riferimento durante tutto il lavoro.**
+   Il flusso completo: input atteso, review iniziale 24-48h, metodologie
+   prototipo->repo, monorepo Turborepo, documentazione/ADR, analisi del dominio,
+   attivita' pratiche (entity map, dependency map, ORM, test), tracce
+   (architettura, dati, sicurezza, deploy, test, App Insights), Definition of
+   Done, anti-pattern. **Tienilo aperto come riferimento durante tutto il
+   lavoro.**
 
 2. **[Analisi del dominio e bounded context](./02-analisi-dominio-bounded-context.md)**
    — Come decidere dove mettere i confini dei moduli. Da leggere prima della
@@ -44,7 +46,10 @@ Per un nuovo prototipo da industrializzare, la sequenza e':
 5. (Opzionale) Prepara discovery-prep.md leggendo il prototipo.
 6. Conduci la sessione bounded-context-discovery con AF (eventuale PO/domain expert).
    → output: docs/domain-map.md (bounded context, ubiquitous language, context map).
-7. Apri le PR seguendo il backlog tecnico, modulo per modulo, secondo il domain-map.
+6b. (In parallelo o subito dopo) Agent pass su codebase -> docs/entity-map.md (FE+BE),
+    poi docs/dependency-map.md e piano di separazione dipendenze.
+7. Apri le PR seguendo il backlog tecnico, modulo per modulo, secondo domain-map
+   e dependency-map; test unit/integration/E2E estesi per entity e AC.
 8. Quando chiudi una versione: leggi release/rami-versioning-release.md.
 9. Pre-tag: AF lancia la skill changelog-generation, dev rivede tecnicamente.
    → output: CHANGELOG.md aggiornato + docs/release-notes/<versione>.md.
@@ -137,6 +142,8 @@ Skill candidate da aggiungere (non ancora scritte):
 
 Documenti da scrivere in giri successivi:
 
+- `03-metodologie-prototipo-repo.md` — approfondimento fasi handover, branch,
+  migrazione env e checklist operative prototipo → repo industrializzato.
 - `release/deploy-clienti.md` — gestione consegna immagini al cliente (con IT).
 - `release/distribuzione-plugin.md` — formati e flussi specifici per plugin
   MESAPPA, con esempio da plugin esistente.
