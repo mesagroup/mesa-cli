@@ -1,0 +1,48 @@
+name: Task
+description: Concrete implementation work item (usually a child of a story)
+title: "[Task] "
+labels: ["task", "priority: medium"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Labels:** `task` + priority. **Native Type:** set to **Task** after creation.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What needs to be done and why
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps
+      value: |
+        - [ ] Step one
+        - [ ] Step two
+    validations:
+      required: true
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: Technical notes
+    validations:
+      required: false
+  - type: input
+    id: parent
+    attributes:
+      label: Parent story or epic (optional)
+      placeholder: "42"
+    validations:
+      required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - priority: high
+        - priority: medium
+        - priority: low
+    validations:
+      required: true

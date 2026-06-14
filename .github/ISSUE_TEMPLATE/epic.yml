@@ -1,0 +1,86 @@
+name: Epic
+description: Large body of work spanning multiple user stories
+title: "[Epic] "
+labels: ["epic", "priority: medium"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Epics capture a product outcome decomposed into stories. Include a phased plan and child-story checklist.
+
+        **Labels:** `epic` + priority. **Native Type:** mesagroup org has no Epic type — label + body only.
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal / Outcome
+      description: One sentence describing the outcome this epic delivers
+      placeholder: Users can interact with mesa CLI from any device via a responsive web UI
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: Background / Context
+      description: Why now? What problem exists?
+    validations:
+      required: true
+  - type: textarea
+    id: scope_in
+    attributes:
+      label: In scope
+      placeholder: "- Item one\n- Item two"
+    validations:
+      required: true
+  - type: textarea
+    id: scope_out
+    attributes:
+      label: Out of scope
+      placeholder: "- Item one"
+    validations:
+      required: false
+  - type: textarea
+    id: success_metrics
+    attributes:
+      label: Success metrics
+      placeholder: "- Metric one\n- Metric two"
+    validations:
+      required: true
+  - type: textarea
+    id: implementation_plan
+    attributes:
+      label: Implementation plan (phased)
+      description: Phase 1, Phase 2, etc. with exit criteria per phase
+      placeholder: |
+        ### Phase 1 — Foundation
+        ...
+
+        ### Phase 2 — Core features
+        ...
+    validations:
+      required: true
+  - type: textarea
+    id: child_stories
+    attributes:
+      label: Child stories
+      description: Proposed stories as unchecked items; replace with issue numbers after creation
+      value: |
+        - [ ] Story one
+        - [ ] Story two
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks / Dependencies
+    validations:
+      required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - priority: high
+        - priority: medium
+        - priority: low
+    validations:
+      required: true

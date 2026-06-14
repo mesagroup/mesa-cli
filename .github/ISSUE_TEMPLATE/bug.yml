@@ -1,0 +1,64 @@
+name: Bug
+description: Report a defect or regression
+title: "[Bug] "
+labels: ["bug", "priority: medium"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Labels:** `bug` + priority. **Native Type:** set to **Bug** after creation.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One-line description of the defect
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      value: |
+        - OS:
+        - mesa version:
+        - Node version:
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+    validations:
+      required: false
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - priority: high
+        - priority: medium
+        - priority: low
+    validations:
+      required: true
